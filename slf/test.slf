@@ -35,7 +35,9 @@ theorem equal-transitive:
     forall e: n1 = n2
     forall f: n2 = n3
     exists n1 = n3
-    proof by unproved
+    use inversion of rule eq on e
+    where n1 := n2
+    proof by f
 end theorem
 // judgment ...
 
