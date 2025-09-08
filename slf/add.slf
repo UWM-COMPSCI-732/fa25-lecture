@@ -1,0 +1,51 @@
+// default package
+
+terminals S
+
+syntax 
+   n ::= 0 | S n
+   
+   1 := S 0
+   2 := S S 0
+
+judgment add: n + n = n
+
+     --------- add-zero
+     0 + n = n
+     
+     n1 + n2 = n3
+     ----------------- add-succ
+     S n1 + n2 = S n3
+     
+lemma add-right-zero:
+    forall n
+    exists n + 0 = n
+    proof by induction on n:
+        case 0 is
+            proof by rule add-zero
+        end case
+        case S n' is
+            miracle: n' + 0 = n' by induction hypothesis on n'
+            proof by rule add-succ on miracle
+        end case
+    end induction
+end lemma
+
+theorem add-commutative:
+    forall d: n1 + n2 = n3
+    exists n2 + n1 = n3
+    proof by case analysis on d:
+        case rule
+            -------------- add-zero
+            _: 0 + n2 = n2
+            where n1 := 0
+            and n3 := n2
+        is
+            proof by lemma add-right-zero on n2
+        end case
+    end case analysis
+end theorem
+// judgment ...
+
+// theorem ...
+
