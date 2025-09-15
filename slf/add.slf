@@ -99,7 +99,93 @@ theorem add-is-a-function:
 end theorem
 
 
-// judgment ...
+judgment not_equal: n <> n
 
+// !! NOT ADEQUATE
+
+   --------- ne-z-s
+   0 <> S n
+   
+   n <> n'
+   -------- ne-symm
+   n' <> n
+   
+   -------- ne-succ
+   n <> S n
+
+lemma succ-preserves-ne:
+    forall d: n1 <> n2
+    exists S n1 <> S n2
+    proof by unproved
+end lemma
+
+lemma succ-cancels-ne:
+    forall d: S n1 <> S n2
+    exists n1 <> n2
+    proof by induction on d:
+         case rule
+             e: S n2 <> S n1
+             ---------------- ne-symm
+             _: S n1 <> S n2
+         is
+             e': n2 <> n1 by induction hypothesis on e
+             proof by rule ne-symm on e'
+         end case
+         case rule
+             ----------------- ne-succ
+             _: S n1 <> S S n1
+             where n2 := S n1
+         is
+             proof by rule ne-succ
+         end case
+     end induction
+end lemma
+
+theorem not-equal-anti-reflexive:
+    forall n
+    forall d: n <> n
+    exists contradiction
+    proof by case analysis on d:
+    end case analysis
+end theorem
+
+theorem equal-complete:
+    forall n1
+    forall n2
+    exists n1 = n2 or n1 <> n2
+    use induction on n1, n2
+    proof by case analysis on n1:
+        case 0 is
+            proof by case analysis on n2:
+                case 0 is
+                    _: 0 = 0 by rule eq
+                    // proof by unproved
+                end case
+                case S n2' is
+                    _: 0 <> S n2' by rule ne-z-s
+                end case
+            end case analysis
+        end case
+        case S n1' is
+            proof by case analysis on n2:
+                case 0 is
+                    q: 0 <> S n1' by rule ne-z-s 
+                    _: S n1' <> 0 by rule ne-symm on q
+                end case
+                case S n2' is
+                    c: n1' = n2' or n1' <> n2' by induction hypothesis on n1', n2'
+                    proof by case analysis on c:
+                        case or e: n1' = n2' is
+                            proof by unproved
+                        end case
+                        case or ne: n1' <> n2' is
+                            _: S n1' <> S n2' by lemma succ-preserves-ne on ne
+                        end case
+                    end case analysis
+                end case
+            end case analysis
+        end case
+    end case analysis
+end theorem
 // theorem ...
 
