@@ -1,0 +1,199 @@
+package edu.uwm.cs732;
+
+terminals true false if then else zero succ iszero pred
+
+syntax
+   t ::= true
+      | false
+      | if t then t else t
+      | iszero t
+      | succ t
+      | pred t
+      | zero
+
+judgment eq: t = t
+
+   ----- eq
+   t = t
+
+terminals value numvalue
+    
+judgment isavalue: t value
+
+  ------------ val-zero
+  zero value
+  
+  ---------- val-true
+  true value
+  
+  ----------- val-false
+  false value
+
+  t numvalue
+  ----------- val-num  
+  succ t value
+   
+judgment isanumvalue: t numvalue
+
+  -------------- nval-zero
+  zero numvalue
+  
+judgment eval: t -> t
+
+  ----------------- E-PredZero
+  pred zero -> zero
+  
+  t numvalue
+  ---------------- E-PredSucc
+  pred succ t -> t
+  
+  t1 -> t1'
+  ------------------------------------ E-If
+  if t1 then t2 else t3 -> if t1' then t2 else t3
+
+  ------------------- E-IszeroZero
+  iszero zero -> true
+
+  t numvalue
+  ---------------------- E-IszeroSucc
+  iszero succ t -> false
+  
+  ----------------------------- E-IfTrue
+  if true then t2 else t3 -> t2
+  
+  ------------------------------- E-IfFalse
+  if false then t2 else t3 -> t3
+  
+  t -> t'
+  --------------------- E-Iszero
+  iszero t -> iszero t'
+
+  t -> t'
+  --------------- E-Pred
+  pred t -> pred t'
+  
+  t -> t'
+  ----------------- E-Succ
+  succ t -> succ t'
+  
+theorem values-normal: // 3.5.7
+   forall v: t value
+   forall e: t -> t'
+   exists contradiction
+   proof by unproved
+end theorem 
+   
+theorem determinacy-of-eval:
+    forall e1: t -> t'
+    forall e2: t -> t''
+    exists t' = t''
+    use induction on e1
+    proof by case analysis on e1:
+        case rule
+            nv: t1 numvalue
+            ------------------ E-PredSucc
+            _: pred succ t1 -> t1
+            where t := pred succ t1
+            and t' := t1
+        is
+            proof by case analysis on e2:
+                case rule
+                    _: t1 numvalue 
+                    --------------------- E-PredSucc
+                    _: pred succ t1 -> t1
+                    where t'' := t1
+                is
+                    proof by rule eq
+                end case
+                case rule
+                    _: succ t1 -> t2'
+                    ------------------------- E-Pred
+                    _: pred succ t1 -> pred t2'
+                    where t'' := pred t2'
+                is
+                    proof by unproved
+                end case
+            end case analysis
+        end case 
+        case rule
+            ---------------- E-PredZero
+            _: pred zero -> zero
+            where t := pred zero
+            and t' := zero
+        is
+            proof by unproved
+        end case
+        case rule
+            ---------------------- E-IszeroZero
+            _: iszero zero -> true
+            where t := iszero zero
+            and t' := true
+        is
+            proof by case analysis on e2:
+                case rule
+                    ----------------------- E-IszeroZero
+                    _: iszero zero -> true
+                    where t'' := true
+                is
+                    proof by rule eq
+                end case
+                case rule
+                    g: zero -> t2'
+                    ------------------------ E-Iszero
+                    _: iszero zero -> iszero t2'
+                    where t'' := iszero t2'
+                is
+                    proof by contradiction on g
+                end case
+            end case analysis
+        end case
+        case rule
+            ev1: t1 -> t1'
+            ----------------------- E-Pred
+            _: pred t1 -> pred t1'
+            where t := pred t1
+            and t' := pred t1'
+        is
+            proof by case analysis on e2:
+                case rule
+                    ev2: t1 -> t1''
+                    ----------------------- E-Pred
+                    _: pred t1 -> pred t1''
+                    where t'' := pred t1''
+                is
+                    eq1: t1' = t1'' by induction hypothesis on ev1, ev2
+                    use inversion on eq1 where t1' := t1''
+                    proof by rule eq
+                end case
+                case rule
+                    nv'': t'' numvalue
+                    -------------------------- E-PredSucc
+                    _: pred succ t'' -> t''
+                    where t1 := succ t''
+                is
+                    sv'': succ t'' value by rule val-num on nv''
+                    _: contradiction by theorem values-normal on sv'', ev1
+                end case
+            end case analysis
+        end case 
+        case rule
+            nv: t1 numvalue
+            ---------------------- E-IszeroSucc
+            _: iszero succ t1 -> false
+            where t := iszero succ t1
+            and t' := false
+        is
+            proof by unproved
+        end case
+        case rule
+            ----------------------------- E-IfTrue
+            _: if true then t2 else t3 -> t2
+            where t := if true then t2 else t3
+            and t' := t2
+        is
+            proof by unproved
+        end case 
+    end case analysis
+end theorem
+// theorem ...
+
