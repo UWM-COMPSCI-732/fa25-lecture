@@ -1,0 +1,182 @@
+package edu.uwm.cs732;
+
+terminals fn value bound
+
+syntax
+  t ::= x
+     | t t
+     | fn x : t[x]
+
+  G ::= *
+     | G, x bound
+     
+judgment value: t value
+
+----------------- val-fn
+fn x : t[x] value
+
+
+judgment eval: t -> t
+
+   t2 value
+   --------------------------- E-AppAbs
+   (fn x : t1[x]) t2 -> t1[t2]
+   
+   t1 -> t1'
+   -------------------------- E-App-1
+   t1 t2 -> t1' t2
+
+   t1 value
+   t2 -> t2'
+   ------------------------------ E-App-2
+   t1 t2 -> t1 t2'
+   
+terminals pair fst snd ho id tru fls
+    
+syntax
+  id := fn x : x
+  fls := fn x : fn x' : x'
+  tru := fn x : fn x' : x
+  pair := fn x : fn x' : fn x1 : ((x1 x) x') 
+  fst := fn x : (x tru)
+  snd := fn x : (x fls)
+  ho := fn x : (x x)
+  
+lemma id-eval:
+    exists id id -> id
+    v1: (fn x : x) value by rule val-fn
+    proof by rule E-AppAbs on v1
+end lemma
+
+lemma hoho-eval:
+    exists ho ho -> ho ho
+    v4: ho value by rule val-fn
+    proof by rule E-AppAbs on v4
+end lemma
+ 
+judgment evals: t ->* t
+
+------- evals-reflexive
+t ->* t
+
+t -> t'
+-------- evals-eval
+t ->* t'
+
+t1 ->* t2
+t2 ->* t3
+---------- evals-transitive
+t1 ->* t3
+
+lemma id-evals:
+    exists id id ->* id
+    e: id id -> id by lemma id-eval
+    proof by rule evals-eval on e
+end lemma 
+
+lemma much-longer:
+    exists fst ((pair id) ho) ->* id
+    proof by unproved
+end lemma
+
+lemma hoho-does-not-cbv-terminate:
+    forall es: ho ho ->* t
+    forall v: t value
+    exists contradiction
+    use induction on es
+    proof by case analysis on es:
+        case rule
+            ------------- evals-reflexive
+            _: ho ho ->* ho ho
+            where t := ho ho
+        is
+            proof by contradiction on v
+        end case
+
+        case rule
+            e: ho ho -> t
+            -------------- evals-eval
+            _: ho ho ->* t
+        is
+            proof by case analysis on e:
+                case rule
+                    v1: ho value
+                    ------------------ E-AppAbs
+                    _: ho ho -> ho ho
+                    where t := ho ho
+                is
+                    proof by contradiction on v
+                end case
+
+                case rule
+                    eho: ho -> t'
+                    -------------------------------- E-App-1
+                    _: ho ho -> t' ho
+                    where t := t' ho
+                is
+                    proof by contradiction on eho
+                end case
+
+                case rule
+                    _: ho value
+                    eho: ho -> t1
+                    ------------------------------------ E-App-2
+                    _: ho ho -> (ho t1)
+                    where t := ho t1
+                is
+                    proof by contradiction on eho
+                end case
+
+            end case analysis
+        end case
+
+        case rule
+            es1: ho ho ->* t2
+            es2: t2 ->* t
+            ---------------- evals-transitive
+            _: ho ho ->* t
+        is
+            proof by unproved
+        end case
+
+    end case analysis
+end lemma
+
+theorem only-values-normal:
+    forall t
+    exists t value or t -> t'
+    use induction on t
+    proof by case analysis on t:
+        case t1 t2 is
+            o1: t1 value or t1 -> t1' by induction hypothesis on t1
+            o2: t2 value or t2 -> t2' by induction hypothesis on t2
+            proof by case analysis on o1:
+                case or v1: t1 value is
+                    proof by case analysis on o2:
+                        case or v2: t2 value is
+                            use inversion on v1 where t1 := fn x : t11[x]
+                            _: t -> t11[t2] by rule E-AppAbs on v2
+                        end case
+
+                        case or _: t2 -> t2' is
+                            proof by unproved
+                        end case
+
+                    end case analysis
+                end case
+
+                case or e1: t1 -> t1' is
+                    _: t1 t2 -> t1' t2 by rule E-App-1 on e1
+                end case
+
+            end case analysis
+        end case
+
+        case fn x : t1[x] is
+            _: t value by rule val-fn
+        end case
+
+    end case analysis
+end theorem
+// theorem ...
+
