@@ -2,11 +2,11 @@ package edu.uwm.cs732;
 
 terminals true false if then else value
     succ pred iszero numvalue Bool Nat in
-    bad
+    bad Object
 
 syntax
 
-t ::= true 
+u, t ::= true 
    | false
    | if t then t else t
    | 0
@@ -14,8 +14,9 @@ t ::= true
    | pred t
    | iszero t
 
-T ::= Nat
+U, T ::= Nat
    | Bool
+   | Object
 
 
 
@@ -106,6 +107,12 @@ t3 : T
 ------------------------- T-If
 if t1 then t2 else t3 : T
 
+t1 : Bool
+t2 : T
+t3 : T'
+------------------------------ T-IfObject
+if t1 then t2 else t3 : Object
+
 ------- T-Zero
 0 : Nat
 
@@ -120,4 +127,247 @@ pred t : Nat
 t : Nat
 --------------- T-Iszero
 iszero t : Bool
+    
+t : T
+-------------- T-Object
+t : Object
 
+lemma big-gets-value:
+    forall d: t ⇓ t'
+    exists t' value
+    proof by unproved
+end lemma
+
+lemma canonical-forms-Bool:
+    forall d: t : Bool
+    forall v: t value
+    exists t == true or t == false
+    proof by unproved
+end lemma
+
+theorem typed-can-big-step:
+    forall d: t : T
+    exists t ⇓ t' and t' : T
+    proof by induction on d:
+        case rule
+            d0: t : T0
+            -------------------- T-Object
+            _: t : Object
+            where T := Object
+        is
+            b: t ⇓ t' and
+            d0': t' : T0 by induction hypothesis on d0
+            d' : t' : Object by rule T-Object on d0'
+            proof by b, d'
+        end case
+
+        case rule
+            ----------------- T-True
+            _: true : Bool
+            where t := true
+            and T := Bool
+        is
+            v: true value by rule val-true
+            b: true ⇓ true by rule B-Value on v
+            proof by b, d 
+        end case
+
+        case rule
+            ------------------ T-False
+            _: false : Bool
+        is
+            proof by unproved
+        end case
+
+        case rule
+            d1: t1 : Bool
+            d2: t2 : T
+            d3: t3 : T
+            ------------------------------- T-If
+            _: (if t1 then t2 else t3) : T
+            where t := if t1 then t2 else t3
+        is
+            b1: t1 ⇓ t1' and
+            d1': t1' : Bool by induction hypothesis on d1
+            v1': t1' value by lemma big-gets-value on b1
+            c1': t1' == true or t1' == false by lemma canonical-forms-Bool on d1', v1'
+            proof by case analysis on c1':
+                case or e1': t1' == true is
+                    use inversion on e1' where t1' := true
+                    b2: t2 ⇓ t' and
+                    d' : t' : T by induction hypothesis on d2
+                    b: (if t1 then t2 else t3) ⇓ t' by rule B-IfTrue on b1, b2
+                    proof by b, d'
+                end case
+
+                case or e1': t1' == false is
+                    use inversion on e1' where t1' := false
+                    proof by unproved
+                end case
+
+            end case analysis
+        end case
+
+        case rule
+            d1: t1 : Bool
+            d2: t2 : T2
+            d3: t3 : T3
+            ------------------------------------ T-IfObject
+            _: (if t1 then t2 else t3) : Object
+            where t := if t1 then t2 else t3
+            and T := Object
+        is
+            b1: t1 ⇓ t1' and
+            d1': t1' : Bool by induction hypothesis on d1
+            v1': t1' value by lemma big-gets-value on b1
+            c1': t1' == true or t1' == false by lemma canonical-forms-Bool on d1', v1'
+            proof by case analysis on c1':
+                case or e1': t1' == true is
+                    use inversion on e1' where t1' := true
+                    b2: t2 ⇓ t' and
+                    d' : t' : T2 by induction hypothesis on d2
+                    b: (if t1 then t2 else t3) ⇓ t' by rule B-IfTrue on b1, b2
+                    d'x: t' : Object by rule T-Object on d'
+                    proof by b, d'x
+                end case
+
+                case or e1': t1' == false is
+                    use inversion on e1' where t1' := false
+                    proof by unproved
+                end case
+
+            end case analysis
+        end case
+
+        case rule
+            ------------- T-Zero
+            _: 0 : Nat
+        is
+            proof by unproved
+        end case
+
+        case rule
+            _: t0 : Nat
+            ------------------ T-Succ
+            _: (succ t0) : Nat
+        is
+            proof by unproved
+        end case
+
+        case rule
+            _: t0 : Nat
+            ------------------ T-Pred
+            _: (pred t0) : Nat
+        is
+            proof by unproved
+        end case
+
+        case rule
+            _: t0 : Nat
+            --------------------- T-Iszero
+            _: (iszero t0) : Bool
+        is
+            proof by unproved
+        end case
+
+    end induction
+end theorem
+
+theorem determinacy-of-typing:
+    forall d1: t : T1
+    forall d2: t : T2
+    exists T1 == T2
+    proof by induction on d1:
+        case rule
+            ----------------- T-True
+            _: true : Bool
+            where t := true
+            and T1 := Bool
+        is
+            proof by case analysis on d2:
+                case rule
+                    ----------------- T-True
+                    _: true : Bool
+                is
+                    proof by unproved
+                end case
+
+                case rule
+                    _: true : T0
+                    -------------------- T-Object
+                    _: true : Object
+                is
+                    proof by unproved
+                end case
+
+            end case analysis
+        end case
+
+        case rule
+            ------------------ T-False
+            _: false : Bool
+        is
+            proof by unproved
+        end case
+
+        case rule
+            _: t0 : Bool
+            _: t1 : T1
+            _: t2 : T1
+            ------------------------------- T-If
+            _: (if t0 then t1 else t2) : T1
+        is
+            proof by unproved
+        end case
+
+        case rule
+            _: t0 : Bool
+            _: t1 : T0
+            _: t2 : T3
+            ------------------------------------ T-IfObject
+            _: (if t0 then t1 else t2) : Object
+        is
+            proof by unproved
+        end case
+
+        case rule
+            ------------- T-Zero
+            _: 0 : Nat
+        is
+            proof by unproved
+        end case
+
+        case rule
+            _: t0 : Nat
+            ------------------ T-Succ
+            _: (succ t0) : Nat
+        is
+            proof by unproved
+        end case
+
+        case rule
+            _: t0 : Nat
+            ------------------ T-Pred
+            _: (pred t0) : Nat
+        is
+            proof by unproved
+        end case
+
+        case rule
+            _: t0 : Nat
+            --------------------- T-Iszero
+            _: (iszero t0) : Bool
+        is
+            proof by unproved
+        end case
+
+        case rule
+            _: t : T0
+            -------------------- T-Object
+            _: t : Object
+        is
+            proof by unproved
+        end case
+
+    end induction
+end theorem
