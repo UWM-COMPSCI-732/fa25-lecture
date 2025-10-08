@@ -88,7 +88,7 @@ theorem determinacy-of-eval:
     forall e2: t -> t''
     exists t' = t''
     use induction on e1
-    proof by case analysis on e1:
+    do case analysis on e1:
         case rule
             nv: t1 numvalue
             ------------------ E-PredSucc
@@ -156,6 +156,15 @@ theorem determinacy-of-eval:
         is
             proof by case analysis on e2:
                 case rule
+                    ----------------------- E-PredZero
+                    _: (pred zero) -> zero
+                    where t1 := zero
+                    and t'' := zero
+                is
+                    proof by contradiction on ev1
+                end case
+
+                case rule
                     ev2: t1 -> t1''
                     ----------------------- E-Pred
                     _: pred t1 -> pred t1''
@@ -194,6 +203,7 @@ theorem determinacy-of-eval:
             proof by unproved
         end case 
     end case analysis
+    proof by unproved
 end theorem
 // theorem ...
 
