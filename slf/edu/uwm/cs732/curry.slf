@@ -10,8 +10,8 @@ syntax
   T ::= A
      | T -> T
      
-  G ::= *
-     | G, x:T
+  Gamma ::= *
+     | Gamma, x:T
      
 judgment value: t value
 
@@ -33,4 +33,106 @@ judgment eval: t -> t
    t2 -> t2'
    ------------------------------ E-App-2
    t1 t2 -> t1 t2'
+   
 
+judgment typing: Gamma |- t : T
+assumes Gamma
+
+   Gamma |- t1 : T2 -> T1
+   Gamma |- t2 : T2 
+   --------------------------- T-App
+   Gamma |- t1 t2 : T1
+   
+   Gamma, x:T |- t[x] : T'
+   ------------------------------ T-Abs
+   Gamma |- fn x . t[x] : T -> T' 
+   
+   ----------------- T-Var
+   Gamma, x:T |- x:T
+   
+
+theorem preservation:
+    forall d: * |- t : T
+    forall e: t -> t'
+    exists * |- t' : T
+    proof by induction on d:
+        case rule
+            d1: * |- t1 : (T2 -> T)
+            d2: * |- t2 : T2
+            --------------------------------- T-App
+            _: * |- (t1 t2) : T
+            where t := t1 t2
+        is
+            proof by case analysis on e:
+                case rule
+                    _: t2 value
+                    --------------------------------- E-AppAbs
+                    _: ((fn x . t11[x]) t2) -> t11[t2]
+                    where t1 := fn x . t11[x]
+                    and t' := t11[t2]
+                is
+                    proof by case analysis on d1:
+                        case rule
+                            d11: *, x : T2 |- t11[x] : T
+                            ------------------------------------ T-Abs
+                            _: * |- fn x . t11[x] : T2 -> T
+                        is
+                            proof by substitution on d11, d2
+                        end case
+
+                    end case analysis
+                end case
+                case rule
+                    e1: t1 -> t1'
+                    -------------------------------- E-App-1
+                    _: (t1 t2) -> (t1' t2)
+                    where t' := t1' t2
+                is
+                    d1': * |- t1' : (T2 -> T) by induction hypothesis on d1, e1
+                    proof by rule T-App on d1', d2
+                end case
+                case rule
+                    _: t1 value
+                    e2: t2 -> t2'
+                    ------------------------------------ E-App-2
+                    _: (t1 t2) -> (t1 t2')
+                    where t' := t1 t2'
+                is
+                    d2': * |- t2' : T2 by induction hypothesis on d2, e2
+                    proof by rule T-App on d1, d2'
+                end case
+
+            end case analysis    
+        end case
+
+        case rule
+            _: (*, x : T2) |- t1[x] : T1
+            ------------------------------------ T-Abs
+            _: * |- (fn x . t1[x]) : (T2 -> T1)
+            where T := T2 -> T1
+            and t := fn x . t1[x] 
+        is
+            proof by case analysis on e:
+            end case analysis
+        end case
+
+    end induction
+end theorem
+
+lemma id-typed: 
+    assumes Gamma
+    exists Gamma |- (fn x . x) : A -> A
+    dx: Gamma, x : A |- x : A by rule T-Var
+    proof by rule T-Abs on dx
+end lemma
+
+lemma c2-typed:
+    assumes Gamma
+    forall T
+    exists Gamma |- fn x1 . fn x2 . (x1 (x1 x2)) : (T -> T) -> (T -> T)
+    dc2c: Gamma, x1 : T->T, x2 : T |- x1 : T -> T by rule T-Var
+    dc2d: Gamma, x1 : T->T, x2 : T |- x1 x2 : T by unproved
+    dc2b: Gamma, x1 : T-> T, x2 : T |- x1 (x1 x2) : T by rule T-App on dc2c, dc2d
+    dc2a: Gamma, x1 : (T -> T) |- (fn x2 . (x1 (x1 x2))) : (T -> T) by rule T-Abs on dc2b
+    proof by rule T-Abs on dc2a
+end lemma
