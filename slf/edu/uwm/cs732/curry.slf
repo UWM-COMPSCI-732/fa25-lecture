@@ -130,8 +130,10 @@ lemma c2-typed:
     assumes Gamma
     forall T
     exists Gamma |- fn x1 . fn x2 . (x1 (x1 x2)) : (T -> T) -> (T -> T)
-    dc2c: Gamma, x1 : T->T, x2 : T |- x1 : T -> T by rule T-Var
-    dc2d: Gamma, x1 : T->T, x2 : T |- x1 x2 : T by unproved
+    dc2c1: Gamma, x2 : T, x1 : T->T |- x1 : T->T by rule T-Var 
+    dc2c: Gamma, x1 : T->T, x2 : T |- x1 : T -> T by exchange on dc2c1
+    dc2c2: Gamma, x1 : T->T, x2 : T |- x2 : T by rule T-Var 
+    dc2d: Gamma, x1 : T->T, x2 : T |- x1 x2 : T by rule T-App on dc2c, dc2c2
     dc2b: Gamma, x1 : T-> T, x2 : T |- x1 (x1 x2) : T by rule T-App on dc2c, dc2d
     dc2a: Gamma, x1 : (T -> T) |- (fn x2 . (x1 (x1 x2))) : (T -> T) by rule T-Abs on dc2b
     proof by rule T-Abs on dc2a
