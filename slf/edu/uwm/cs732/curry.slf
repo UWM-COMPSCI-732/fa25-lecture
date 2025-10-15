@@ -1,0 +1,36 @@
+package edu.uwm.cs732;
+
+terminals fn value bound A
+
+syntax
+  t ::= x
+     | t t
+     | fn x . t[x]
+
+  T ::= A
+     | T -> T
+     
+  G ::= *
+     | G, x:T
+     
+judgment value: t value
+
+----------------- val-fn
+fn x .  t[x] value
+
+
+judgment eval: t -> t
+
+   t2 value
+   --------------------------- E-AppAbs
+   (fn x . t1[x]) t2 -> t1[t2]
+   
+   t1 -> t1'
+   -------------------------- E-App-1
+   t1 t2 -> t1' t2
+
+   t1 value
+   t2 -> t2'
+   ------------------------------ E-App-2
+   t1 t2 -> t1 t2'
+
