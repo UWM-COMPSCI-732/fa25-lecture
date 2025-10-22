@@ -3,7 +3,13 @@ package edu.uwm.cs732;
 terminals unit value
           Unit in fn inl inr of X
           if then else true false Bool
+          let
 
+module Nat = org.sasylf.util.Natural
+
+syntax l = Nat.n
+
+judgment labelne = Nat.notequal : l <> l 
 
 syntax
 
@@ -17,7 +23,13 @@ t ::= unit
   | <t,t> // EXTRA
   | t@1   // (ditto)
   | t@2   // (ditto)
+  | let x=t in t[x]
+  | { r }
+  | t.l
 
+r ::= l=t, r
+   | .
+   
 // we encode the "if" sublanguage using sums:
 true := inl unit
 false := inr unit
@@ -28,6 +40,10 @@ T ::= Unit
   | T -> T
   | T X T  // EXTRA
   | T + T
+  | { R }
+  
+R ::= l:T, R
+   | .
 
 // And this is the Bool type:
 Bool := Unit + Unit
@@ -53,6 +69,20 @@ unit value
 -------------------- val-fn
 fn x:T => t[x] value
 
+r value
+------------ val-rec
+{ r } value
+
+judgment recisavalue: r value
+
+------- val-rec-empty
+. value
+
+
+t value
+r value
+------------ val-rec-more
+l=t, r value
 
 // TODO: Add new value judgments for sums
 // EXTRA: Add value judgment(s) for products
@@ -84,6 +114,43 @@ t2 value
 ------------------------------ E-AppAbs
 (fn x:T => t1[x]) t2 -> t1[t2]
 
+t1 value
+---------------------------- E-LetV
+let x = t1 in t2[x] -> t2[t1]
+
+t1 -> t1'
+----------------------------------- E-Let
+let x=t1 in t2[x] -> let x=t1' in t2[x]
+
+r -> r'
+--------------------- E-Rec
+{ r } -> { r' }
+
+r value
+r@l = t
+----------------- E-Sel
+{r}.l -> t
+
+judgment evalrec: r -> r
+
+t -> t'
+------------------ E-Rec1
+l=t, r -> l=t', r
+
+t value
+r -> r'
+----------------- E-Rec2
+l=t, r -> l=t, r'
+
+judgment lookup: r@l = t
+
+---------------- lookup-here
+(l=t, r)@l = t
+
+l <> l'
+r@l' = t'
+-------------------- lookup-there
+(l=t,r)@l' = t'
 
 // TODO: Add evaluation rules for sums
 // EXTRA: Add evaluation rules for products
@@ -140,6 +207,49 @@ Gamma |- t2 : T2
 ----------------------- T-App
 Gamma |- t1 t2 : T1
 
+Gamma |- t1 : T1
+Gamma, x:T1 |- t2[x] : T2
+---------------------- T-Let
+Gamma |- let x = t1 in t2[x] : T2
+
+Gamma |- r : R
+--------------------------- T-Rec
+Gamma |- { r } : { R }
+
+Gamma |- t : { R }
+R@l = T
+---------------------- T-Sel
+Gamma |- t . l : T
+
+judgment typerec: Gamma |- r : R
+assumes Gamma
+
+---------------- T-Rec-Empty
+Gamma |- . : .
+
+Gamma |- t : T
+Gamma |- r : R
+------------------------- T-Rec-NonEmpty
+Gamma |- (l=t,r) : l:T, R
+    
+judgment Lookup: R@l = T
+
+---------------- Lookup-here
+(l:T, R)@l = T
+
+l <> l'
+R@l' = T'
+-------------------- Lookup-there
+(l:T,R)@l' = T'
+
+lemma let-adequate:
+    exists * |- let x = unit in x : Unit
+    d1: * |- unit : Unit by rule T-Unit
+    v : x:Unit in (*, x:Unit) by rule var
+    d2: *, x:Unit |- x : Unit by rule T-Var on v
+    proof by rule T-Let on d1, d2
+end lemma
+     
 // TODO: Add the new type rules for sum types
 // EXTRA: add new type rules for for product types
 //   Don't do the EXTRA part until everything else works
@@ -255,6 +365,26 @@ theorem progress :
     exists t value or t -> t' .
     proof by induction on d:
         case rule
+            d1: * |- t1 : T1
+            d2: *, x : T1 |- t2[x] : T
+            ---------------------------- T-Let
+            _: * |- (let x = t1 in t2[x]) : T
+            where t := let x = t1 in t2[x] 
+        is
+            o1: t1 value or t1 -> t1' by induction hypothesis on d1
+            _: t -> t' by case analysis on o1:
+                case or v1: t1 value is
+                    proof by rule E-LetV on v1
+                end case
+
+                case or e1: t1 -> t1' is
+                    proof by rule E-Let on e1
+                end case
+
+            end case analysis
+        end case
+
+        case rule
             ------------------ T-Unit
             _: * |- unit : Unit
             where t := unit and T := Unit
@@ -320,6 +450,20 @@ lemma subst :
     forall d2: Gamma |- t2 : T2
     exists Gamma |- t1[t2] : T1 .
     _ : Gamma |- t1[t2] : T1 by induction on d1:
+        case rule
+            d11: Gamma, x:T2 |- t11[x] : T11
+            d12: Gamma, x:T2, x':T11 |- t12[x][x'] : T1
+            -------------------------------------------------------- T-Let
+            _: Gamma, x : T2 |- (let x' = t11[x] in t12[x][x']) : T1
+            where t1[x] := let x' = t11[x] in t12[x][x']
+        is
+            d11': Gamma |- t11[t2] : T11 by induction hypothesis on d11, d2
+            d12r: Gamma, x':T11, x:T2 |- t12[x][x'] : T1 by exchange on d12
+            d2w:  Gamma, x':T11 |- t2 : T2 by weakening on d2
+            d12': Gamma, x':T11 |- t12[t2][x'] : T1 by induction hypothesis on d12r, d2w
+            proof by rule T-Let on d11', d12'
+        end case
+
 
         case rule
             ------------------------------- T-Unit
@@ -394,6 +538,36 @@ theorem preservation :
     forall e: t -> t'
     exists * |- t' : T .
     _ : * |- t' : T by induction on d:
+        case rule
+            d1: * |- t1 : T1
+            d2: *, x:T1 |- t2[x] : T
+            ---------------------------- T-Let
+            _: * |- (let x = t1 in t2[x]) : T
+            where t := let x = t1 in t2[x]
+        is
+            proof by case analysis on e:
+                case rule
+                    v1: t1 value
+                    ---------------------------------- E-LetV
+                    _: (let x = t1 in t2[x]) -> t2[t1]
+                    where t' := t2[t1]
+                is
+                    proof by lemma subst on d2, d1
+                end case
+
+                case rule
+                    e1: t1 -> t1'
+                    ----------------------------------------- E-Let
+                    _: (let x = t1 in t2[x]) -> (let x = t1' in t2[x])
+                    where t' := let x=t1' in t2[x]
+                is
+                    d1': * |- t1' : T1 by theorem preservation on d1, e1
+                    proof by rule T-Let on d1', d2 
+                end case
+
+            end case analysis
+        end case
+
         case rule
             ----------------------- T-Unit
             _: * |- unit : Unit
