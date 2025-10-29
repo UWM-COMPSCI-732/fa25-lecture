@@ -23,9 +23,17 @@ add 3 0;
 add 3 1;
 
 mul = reffix (lambda m:Nat->Nat->Nat . lambda x:Nat . lambda y: Nat .
-                    m x y);
+                  if iszero y then 0
+		  else add x (m x (pred y)));
+		  
 "mul 2 2 = ";
 mul 2 2;
 "mul 3 3 = ";
 mul 3 3;
 
+badmul = reffix (lambda m:Nat->Nat->Nat . m);
+
+"badmul 2 2 = ";
+badmul 2 2;
+"badmul 3 3 = ";
+badmul 3 3;
