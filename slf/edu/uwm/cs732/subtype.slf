@@ -1,0 +1,959 @@
+/* CompSci 657/732
+ * Record typing (and eventually subtyping)
+ */
+
+package edu.uwm.cs732;
+
+terminals unit value
+          Unit in fn inl inr of X undefined Top
+
+
+module Nat = org.sasylf.util.Natural
+
+syntax l = Nat.n
+
+    
+syntax
+ 
+t ::= unit
+  | fn x:T => t[x]
+  | x
+  | t t
+  | { r
+  | t @ l
+
+r ::= l=t, r
+   |  }
+   
+S, T ::= Unit
+  | T -> T
+  | { R
+  | Top
+  
+R ::= l:T, R
+   |  }
+  
+   
+Gamma ::= *
+      | Gamma, x : T
+
+
+
+judgment equal: t == t
+
+------ eq
+t == t
+
+judgment tequal: T == T
+
+------ teq
+T == T
+
+judgment requal: r == r
+
+------- req
+r == r
+
+judgment Requal: R == R
+
+------ Req
+R == R
+
+
+judgment lequal = Nat.equal : l == l
+
+judgment lnotequal = Nat.notequal : l <> l
+
+judgment isavalue: t value
+
+
+---------- val-unit
+unit value
+
+-------------------- val-fn
+fn x:T => t[x] value
+
+r value
+---------- val-rcd
+{ r value
+
+judgment risavalue: r value
+
+-------- val-empty
+} value
+
+t value
+r value
+------------ val-more
+(l=t, r) value
+
+
+judgment eval: t -> t
+
+t1 -> t1'
+--------------- E-App1
+t1 t2 -> t1' t2
+
+t1 value
+t2 -> t2'
+--------------- E-App2
+t1 t2 -> t1 t2'
+
+t2 value
+------------------------------ E-AppAbs
+(fn x:T => t1[x]) t2 -> t1[t2]
+
+t -> t'
+---------------- E-Proj
+t @ l -> t' @ l
+
+r -> r'
+-------------- E-Rcd
+{ r -> { r'
+
+{r value
+r @ l = t
+------------ E-ProjRcd
+{r @ l -> t
+
+judgment reval: r -> r
+
+t -> t'
+-------------------- E-RcdHere
+(l=t, r) -> (l=t', r)
+
+t value
+r -> r'
+--------------------- E-RcdThere
+(l=t, r) -> (l=t, r')
+
+
+judgment rlookup: r @ l = t
+
+---------------- lookup-here
+(l=t, r) @ l = t
+
+r @ l = t
+------------------ lookup-there
+(l'=t', r) @ l = t
+
+judgment no-lookup: Gamma |- r@l undefined
+assumes Gamma
+
+---------------------- no-lookup-none
+Gamma |- }@l undefined
+
+l1 <> l2
+Gamma |- r @l2 undefined
+------------------------------ no-lookup-more
+Gamma |- (l1=t1,r)@l2 undefined
+
+
+judgment subtype: T <: T
+
+
+------ S-Refl
+T <: T
+
+T1 <: T2
+T2 <: T3
+-------- S-Trans
+T1 <: T3
+
+-------- S-Top
+T <: Top
+
+S' <: S
+T <: T'
+------------------ S-Arr
+S -> T <: S' -> T'
+
+R <: R'
+--------------- S-Rcd
+{ R  <: { R' 
+
+
+judgment rcd-subtype: R <: R
+
+------- S-RcdWidth
+R <: }
+
+T <: T'
+R <: R'
+----------------------------- S-RcdDepth
+l:T, R <: l:T', R'
+
+l1 <> l2
+---------------------------------- S-RcdPerm
+l1:T1, l2:T2, R <: l2:T2, l1:T1, R
+
+R1 <: R2
+R2 <: R3
+-------- S-RcdTrans
+R1 <: R3
+
+
+judgment isvar: t : T in Gamma
+assumes Gamma
+
+----------------------- var
+x : T in (Gamma, x : T)
+
+
+judgment type: Gamma |- t : T
+assumes Gamma
+
+-------------------- T-Unit
+Gamma |- unit : Unit
+
+t : T in Gamma
+-------------- T-Var
+Gamma |- t : T
+
+Gamma, x : T1 |- t[x] : T2
+------------------------------------- T-Abs
+Gamma |- (fn x:T1 => t[x]) : T1 -> T2
+
+Gamma |- t1 : T2 -> T1
+Gamma |- t2 : T2
+----------------------- T-App
+Gamma |- t1 t2 : T1
+
+Gamma |- r : R
+-------------------- T-Rcd
+Gamma |- { r : { R
+
+Gamma |- t : { R
+R @ l = T
+-------------------- T-Proj
+Gamma |- t @ l : T
+
+// Sui generis rule for subtyping:
+/*
+Gamma |- t : S
+S <: T
+---------------- T-Sub
+Gamma |- t : T
+TODO: uncomment this rule. */
+
+judgment rtyping: Gamma |- r : R
+assumes Gamma
+
+--------------- T-RcdEmpty
+Gamma |- } : }
+
+Gamma |- t : T
+Gamma |- r : R
+Gamma |- r@l undefined
+-------------------------- T-RcdMore
+Gamma |- (l=t, r) : (l:T, R)
+
+
+judgment Rlookup: R @ l = T
+
+---------------- Lookup-here
+(l:T, R) @ l = T
+
+R @ l = T
+------------------ Lookup-there
+(l':T', R) @ l = T
+
+
+// Lemma 15.3.2 (1)
+// TODO: lemma subtype-inversion-Arrow
+
+
+/* TODO: This will be needed
+// Lemma 15.3.2 (2)
+// We drastically simplify:
+lemma subtype-inversion-Rcd:
+    forall d: S <: { R
+    exists S == { R' and R' <: R.
+    // TODO: Our proof uses a helper lemma that record subtyping is reflexive
+end lemma
+*/
+ 
+// Lemma 15.3.3
+// TODO: define two lemmas for inversion of type
+
+
+// Lemma 15.3.6 (1)
+lemma canonical-forms-Arrow:
+    forall d: * |- t : T1 -> T2
+    forall v: t value
+    exists t == fn x:T => t2[x]. // weakened from earlier
+    use induction on d
+    // get rid of T-Var
+    do case analysis on d:
+        case rule
+            var: t : T1->T2 in *
+            ------------------- T-Var
+            _: * |- t : T1 -> T2
+        is
+            proof by contradiction on var
+        end case
+        // TODO: Handle T-Sub here too
+    end case analysis
+    proof by case analysis on v:
+        case rule
+            _: r value
+            ---------------- val-rcd
+            _: ({ r) value
+            where t := { r
+        is
+            proof by contradiction on d
+        end case
+        case rule
+            -------------------------- val-fn
+            _: (fn x : T0 => t2[x]) value
+            where t := fn x : T0 => t2[x]
+        is
+            proof by case analysis on d:
+                case rule
+                    _: *, x : T1 |- t2[x] : T2
+                    ------------------------------------------- T-Abs
+                    _: * |- (fn x : T1 => t2[x]) : T1 -> T2
+                    where T0 := T1
+                is
+                    proof by rule eq
+                end case
+
+            end case analysis
+        end case
+        case rule
+            --------------------- val-unit
+            _: unit value
+            where t := unit
+        is
+            proof by contradiction on d
+        end case
+    end case analysis
+end lemma  
+  
+lemma canonical-forms-Rcd :
+    forall d: * |- t : { R
+    forall v: t value
+    exists t == { r and r value and * |- r : R. // TODO: weaken
+    // get rid of T-Var
+    use induction on d
+    do case analysis on d:
+        case rule
+            var: t : {R in *
+            ------------------- T-Var
+            _: * |- t : {R
+        is
+            proof by contradiction on var
+        end case
+        // TODO: Handle T-Sub here
+    end case analysis
+    proof by case analysis on v:
+        case rule
+            ---------------- val-unit
+            _: unit value
+            where t := unit
+        is
+            proof by contradiction on d
+        end case
+
+        case rule
+            -------------------------- val-fn
+            _: (fn x : T0 => t0[x]) value
+            where t := (fn x : T0 => t0[x])
+        is
+            proof by contradiction on d
+        end case
+
+        case rule
+            vr: r value
+            ---------------- val-rcd
+            _: ({ r) value
+            where t := { r
+        is
+            proof by case analysis on d:
+                case rule
+                    dr: * |- r : R
+                    -------------------------- T-Rcd
+                    _: * |- ({ r) : ({ R)
+                is
+                    e: t == { r by rule eq
+                    proof by e, vr, dr
+                end case
+            end case analysis
+        end case
+    end case analysis
+end lemma     
+
+/* TODO needed for progress/preservation
+lemma subtype-has-subtype-lookup:
+    forall lk: R @ l = T
+    forall sr: R' <: R
+    exists R' @ l = T' and T' <: T.
+    // proof by unproved // TODO: useful lemma, induction on subtyping
+end lemma
+*/
+
+lemma typed-Rlookup-implies-typed-lookup:
+    forall dr: * |- r : R
+    forall L: R @ l = T
+    exists * |- t : T and r @ l = t.
+    use induction on L
+    proof by case analysis on dr:
+        case rule
+            --------------------- T-RcdEmpty
+            _: * |- } : }
+            where r := } and R := }
+        is
+            proof by contradiction on L
+        end case
+
+        case rule
+            dt': * |- t' : T'
+            dr': * |- r' : R'
+            nl:  * |- r' @ l' undefined
+            -------------------------------- T-RcdMore
+            _: * |- (l' = t', r') : (l' : T', R')
+            where r := l' = t', r' and R := l' : T', R'
+        is
+            proof by case analysis on L:
+                case rule
+                    ---------------------- Lookup-here
+                    _: (l : T, R') @ l = T
+                    where l' := l and T' := T
+                is
+                    look: (l=t', r') @ l = t by rule lookup-here
+                    proof by dt', look
+                end case
+
+                case rule
+                    L': R' @ l = T
+                    ------------------------ Lookup-there
+                    _: (l' : T', R') @ l = T
+                is
+                    dt: * |- t : T and
+                    look': r' @ l = t by induction hypothesis on dr', L'
+                    look: r @ l = t by rule lookup-there on look'
+                    proof by dt, look
+                end case
+
+            end case analysis
+        end case
+
+    end case analysis
+end lemma 
+
+lemma progress-rcd:
+    forall dr: * |- r : R
+    exists r value or r -> r'.
+    proof by induction on dr:
+        case rule
+            --------------------- T-RcdEmpty
+            _: * |- } : }
+            where r := } and R := }
+        is
+            _: } value by rule val-empty
+        end case
+
+        case rule
+            d: * |- t : T
+            d1: * |- r1 : R1
+            nl: * |- r1 @ l undefined
+            -------------------------------- T-RcdMore
+            _: * |- (l = t, r1) : (l : T, R1)
+            where r := (l=t, r1) and R := (l : T, R1)
+        is
+            o0: t value or t -> t' by theorem progress on d
+            o1: r1 value or r1 -> r1' by induction hypothesis on d1
+            proof by case analysis on o0:
+                case or v: t value is
+                    proof by case analysis on o1:
+                        case or v1: r1 value is
+                            _: r value by rule val-more on v, v1
+                        end case
+
+                        case or e1: r1 -> r1' is
+                            _: r -> (l=t,r1') by rule E-RcdThere on v, e1
+                        end case
+                    end case analysis
+                end case
+
+                case or e: t -> t' is
+                    _: r -> (l=t', r1) by rule E-RcdHere on e
+                end case
+
+            end case analysis
+        end case
+
+    end induction
+end lemma  
+and
+// Theorem 9.3.5
+theorem progress :
+    forall d: * |- t : T
+    exists t value or t -> t' .
+    proof by induction on d:
+	// TODO: In lecture
+        case rule
+            ------------------ T-Unit
+            _: * |- unit : Unit
+            where t := unit and T := Unit
+        is
+            v: unit value by rule val-unit
+        end case
+
+        case rule
+            v: t : T in *
+            ------------- T-Var
+            _: * |- t : T
+        is
+            proof by contradiction on v
+        end case
+
+        case rule
+            d1: *, x:T1 |- t1[x] : T2
+            ------------------------------------ T-Abs
+            _ : * |- fn x:T1 => t1[x] : T1 -> T2
+            where t := fn x:T1 => t1[x]
+            and T := T1 -> T2
+        is
+            v : fn x:T1 => t1[x] value by rule val-fn
+        end case
+
+        case rule
+            d1: * |- t1 : T2 -> T
+            d2: * |- t2 : T2
+            ---------------------- T-App
+            _: * |- t1 t2 : T
+            where t := t1 t2
+        is
+            ns1: t1 value or t1 -> t1' by induction hypothesis on d1
+            ns2: t2 value or t2 -> t2' by induction hypothesis on d2
+            _: t1 t2 -> t' by case analysis on ns1:
+                case or e1: t1 -> t1' is
+                    e: t1 t2 -> t1' t2 by rule E-App1 on e1
+                end case
+                case or v1: t1 value is
+                    proof by case analysis on ns2:
+                        case or e2: t2 -> t2' is
+                            e: t1 t2 -> t1 t2' by rule E-App2 on v1,e2
+                        end case
+                        case or v2: t2 value is
+                            c: t1 == fn x:T' => t11[x] by lemma canonical-forms-Arrow on d1,v1
+                            use inversion of rule eq on c where t1 := fn x:T' => t11[x]
+                            proof by rule E-AppAbs on v2
+                        end case
+                    end case analysis
+                end case
+            end case analysis
+        end case
+    end induction
+end theorem
+
+lemma subst-notin:
+    assumes Gamma
+    forall dr: Gamma, x : T |- r[x] @ l undefined
+    forall t assumes Gamma
+    exists Gamma |- r[t] @ l undefined .
+    proof by induction on dr:
+        case rule
+            ---------------------------- no-lookup-none
+            _: (Gamma, x : T) |- } @ l undefined
+            where r[x] := }
+        is
+            proof by rule no-lookup-none
+        end case
+
+        case rule
+            ne: l0 <> l
+            dr0: (Gamma, x : T) |- r0[x] @ l undefined
+            ------------------------------------ no-lookup-more
+            _: (Gamma, x : T) |- (l0 = t0[x], r0[x]) @ l undefined
+            where r[x] := (l0 = t0[x], r0[x])
+        is
+            dr': Gamma |- r0[t] @ l undefined by induction hypothesis on dr0, t
+            proof by rule no-lookup-more on ne, dr'
+        end case
+
+    end induction
+end lemma
+
+lemma substr :
+    assumes Gamma
+    forall dr1: Gamma, x : T2 |- r1[x] : R1
+    forall d2: Gamma |- t2 : T2
+    exists Gamma |- r1[t2] : R1 .
+    use induction on dr1
+    proof by case analysis on dr1:
+        case rule
+            --------------------- T-RcdEmpty
+            _: (Gamma, x : T2) |- } : }
+            where r1[x] := } and R1 := }
+        is
+            proof by rule T-RcdEmpty
+        end case
+
+        case rule
+            d1: Gamma, x : T2 |- t1[x] : T
+            dr11: Gamma, x : T2 |- r11[x] : R
+            nl1:  Gamma, x : T2 |- r11[x] @ l undefined
+            -------------------------------- T-RcdMore
+            _: Gamma, x : T2 |- l = t1[x], r11[x] : (l : T, R)
+            where r1[x] := l = t1[x], r11[x] and R1 := l:T,R
+        is
+            d1' : Gamma |- t1[t2] : T by lemma subst on d1, d2
+            dr' : Gamma |- r11[t2] : R by induction hypothesis on dr11, d2
+            nl  : Gamma |- r11[t2] @ l undefined by lemma subst-notin on nl1, t2
+            proof by rule T-RcdMore on d1', dr', nl
+        end case
+
+    end case analysis
+end lemma
+and
+lemma subst :
+    assumes Gamma
+    forall d1: Gamma, x : T2 |- t1[x] : T1
+    forall d2: Gamma |- t2 : T2
+    exists Gamma |- t1[t2] : T1 .
+    _ : Gamma |- t1[t2] : T1 by induction on d1:
+        // TODO: Add T-Sub (easy)
+        case rule
+            dr1: (Gamma, x : T2) |- r1[x] : R1
+            ------------------------------------- T-Rcd
+            _: (Gamma, x : T2) |- { r1[x] : { R1
+            where t1[x] := { r1[x] and T1 := { R1
+        is
+            dr: Gamma |- r1[t2] : R1 by lemma substr on dr1, d2
+            proof by rule T-Rcd on dr
+        end case
+
+        case rule
+            d11: Gamma, x : T2 |- t11[x] : { R1
+            look: R1 @ l1 = T1
+            -------------------------- T-Proj
+            _: Gamma, x : T2 |- t11[x] @ l1 : T1
+            where t1[x] := t11[x] @ l1
+        is
+            dt: Gamma |- t11[t2] : { R1 by induction hypothesis on d11, d2
+            proof by rule T-Proj on dt, look
+        end case
+
+
+        case rule
+            ------------------------------- T-Unit
+            _: Gamma, x : T2 |- unit : Unit
+            where t1[x] := unit and T1 := Unit
+        is
+            _: Gamma |- unit : Unit by rule T-Unit
+        end case
+
+        case rule
+            v: t1[x] : T1 in (Gamma, x:T2)
+            ------------------------------- T-Var
+            _: Gamma, x:T2 |- t1[x] : T1
+        is
+            _: Gamma |- t1[t2] : T1 by case analysis on v:
+                case rule
+                    ------------------------ var
+                    _: x:T2 in (Gamma, x:T2)
+                    where t1[x] := x and T1 := T2
+                is
+                    _: Gamma |- t2 : T2 by d2
+                end case
+                case rule
+                    --------------------------------- var
+                    _: x':T1 in (Gamma', x':T1, x:T2)
+                is
+                    v': x':T1 in (Gamma', x':T1) by rule var
+                    _: Gamma', x':T1 |- x':T1 by rule T-Var on v'
+                end case
+            end case analysis
+        end case
+
+        case rule
+            d11: Gamma, x : T2, x' : T2' |- t11[x][x'] : T1'
+            ------------------------------------------------------------ T-Abs
+            _  : Gamma, x : T2 |- (fn x':T2' => t11[x][x']) : T2' -> T1'
+            where t1[x] := fn x':T2' => t11[x][x']
+            and T1 := T2' -> T1'
+        is
+            d11r : Gamma, x' : T2', x : T2 |- t11[x][x'] : T1' 
+            by exchange on d11
+            d2' : Gamma, x' : T2' |- t2 : T2
+            by weakening on d2
+            d11': Gamma, x' : T2' |- t11[t2][x'] : T1' 
+            by induction hypothesis on d11r,d2'
+            _: Gamma |- (fn x':T2' => t11[t2][x']) : T2' -> T1' 
+            by rule T-Abs on d11'    
+        end case
+
+        case rule
+            d11: Gamma, x : T2 |- t11[x] : T12 -> T1
+            d12: Gamma, x : T2 |- t12[x] : T12
+            --------------------------------------- T-App
+            _  : Gamma, x : T2 |- t11[x] t12[x] : T1
+            where t1[x] := t11[x] t12[x]
+        is
+            d11': Gamma |- t11[t2] : T12 -> T1 by induction hypothesis on d11,d2
+            d12': Gamma |- t12[t2] : T12 by induction hypothesis on d12,d2
+            _   : Gamma |- t11[t2] t12[t2] : T1 by rule T-App on d11',d12'
+        end case
+    end induction
+end lemma
+
+
+lemma notin-preserved:
+    forall e: r -> r'
+    forall n: * |- r@l undefined
+    exists * |- r'@l undefined.
+    proof by induction on n:
+        case rule
+            ---------------------------- no-lookup-none
+            _: * |- } @ l undefined
+            where r := }
+        is
+            proof by contradiction on e
+        end case
+
+        case rule
+            ne: l0 <> l
+            nl0: * |- r0 @ l undefined
+            ------------------------------------ no-lookup-more
+            _: * |- (l0 = t, r0) @ l undefined
+            where r := l0 = t, r0
+        is
+            proof by case analysis on e:
+                case rule
+                    _: t -> t'
+                    -------------------------- E-RcdHere
+                    _: (l0 = t, r0) -> (l0 = t', r0)
+                    where r' := l0 = t', r0
+                is
+                    proof by rule no-lookup-more on ne, nl0
+                end case
+
+                case rule
+                    _: t value
+                    e0: r0 -> r0'
+                    --------------------------- E-RcdThere
+                    _: (l0 = t, r0) -> (l0 = t, r0')
+                    where r' := l0=t, r0'
+                is
+                    nl0': * |- r0' @ l undefined by induction hypothesis on e0, nl0
+                    proof by rule no-lookup-more on ne, nl0'
+                end case
+
+            end case analysis
+        end case
+
+    end induction
+end lemma
+
+lemma lookup-not-lookup-contradiction:
+    forall d1: r @ l = t
+    forall d2: * |- r @ l undefined
+    exists contradiction
+    proof by induction on d1:
+        case rule
+            ---------------------- lookup-here
+            _: (l = t, r') @ l = t
+            where r := l=t, r'
+        is
+            proof by case analysis on d2:
+                case rule
+                    ne: l <> l
+                    _: * |- r' @ l undefined
+                    ------------------------------------ no-lookup-more
+                    _: * |- (l = t, r') @ l undefined
+                is
+                    proof by theorem Nat.ne-anti-reflexive on ne
+                end case
+
+            end case analysis
+        end case
+
+        case rule
+            d1': r' @ l = t
+            ------------------------ lookup-there
+            _: (l' = t', r') @ l = t
+            where r := l'=t',r'
+        is
+            proof by case analysis on d2:
+                case rule
+                    _: l' <> l
+                    d2': * |- r' @ l undefined
+                    ------------------------------------ no-lookup-more
+                    _: * |- (l' = t', r') @ l undefined
+                is
+                    proof by induction hypothesis on d1',d2'
+                end case
+
+            end case analysis
+        end case
+
+    end induction
+end lemma
+
+lemma preservationr :
+    forall d: * |- r : R
+    forall e: r -> r'
+    exists * |- r' : R .
+    proof by induction on d:
+        case rule
+            --------------------- T-RcdEmpty
+            _: * |- } : }
+            where r := } and R := }
+        is
+            proof by contradiction on e
+        end case
+
+        case rule
+            dt: * |- t : T
+            d1: * |- r1 : R1
+            nl: * |- r1 @ l undefined
+            -------------------------------- T-RcdMore
+            _: * |- (l = t, r1) : (l : T, R1)
+            where r := (l = t, r1) and R := (l : T, R1)
+        is
+            proof by case analysis on e:
+                case rule
+                    et: t -> t'
+                    -------------------------- E-RcdHere
+                    _: (l = t, r1) -> (l = t', r1)
+                    where r' := (l=t', r1)
+                is
+                    dt': * |- t' : T by theorem preservation on dt, et
+                    proof by rule T-RcdMore on dt', d1, nl
+                end case
+
+                case rule
+                    tv: t value
+                    e1: r1 -> r1'
+                    --------------------------- E-RcdThere
+                    _: (l = t, r1) -> (l = t, r1')
+                    where r' := (l=t, r1')
+                is
+                    dr': * |- r1' : R1 by induction hypothesis on d1, e1
+                    nl': * |- r1' @ l undefined by lemma notin-preserved on e1, nl
+                    proof by rule T-RcdMore on dt, dr', nl'
+                end case
+
+            end case analysis
+        end case
+
+    end induction
+end lemma
+and
+theorem preservation :
+    forall d: * |- t : T
+    forall e: t -> t'
+    exists * |- t' : T .
+    _ : * |- t' : T by induction on d:
+        // TODO: Lecture: add T-Proj
+        case rule
+            dr: * |- r : R
+            -------------------------- T-Rcd
+            _: * |- { r : { R
+            where t := { r and T := { R
+        is
+            proof by case analysis on e:
+                case rule
+                    er: r -> r'
+                    -------------------- E-Rcd
+                    _: ({ r) -> ({ r')
+                    where t' := { r'
+                is
+                    dr' : * |- r' : R by lemma preservationr on dr, er
+                    proof by rule T-Rcd on dr'
+                end case
+
+            end case analysis
+        end case
+
+        case rule
+            ----------------------- T-Unit
+            _: * |- unit : Unit
+            where t := unit and T := Unit
+        is
+            _: * |- t' : Unit by case analysis on e:
+            end case analysis
+        end case
+
+        case rule
+            v: t : T in *
+            ----------------- T-Var
+            _: * |- t : T
+        is
+            _: * |- t' : T by contradiction on v
+        end case
+
+        case rule
+            _: *, x : T1 |- t1[x] : T2
+            ---------------------------------------- T-Abs
+            _: * |- (fn x:T1 => t1[x]) : T1 -> T2
+            where t := fn x:T1 => t1[x] and T := T1 -> T2
+        is
+            _: * |- t' : T by contradiction on e
+        end case
+
+        case rule
+            d1: * |- t1 : T2 -> T1
+            d2: * |- t2 : T2
+            --------------------------- T-App
+            _ : * |- t1 t2 : T1
+            where t := t1 t2 and T := T1
+        is
+            _: * |- t' : T by case analysis on e:
+                case rule
+                    e1: t1 -> t1'
+                    ------------------- E-App1
+                    _ : t1 t2 -> t1' t2
+                    where t' := t1' t2
+                is
+                    d1': * |- t1' : T2 -> T1 
+                    by induction hypothesis on d1,e1
+                    _  : * |- t1' t2 : T1 by rule T-App on d1',d2
+                end case
+                case rule
+                    _ : t1 value
+                    e2: t2 -> t2'
+                    ------------------- E-App2
+                    _ : t1 t2 -> t1 t2'
+                    where t' := t1 t2'
+                is
+                    d2': * |- t2' : T2
+                    by induction hypothesis on d2,e2
+                    _  : * |- t1 t2' : T1 by rule T-App on d1,d2'
+                end case
+                case rule
+                    _: t2 value
+                    ------------------------------------- E-AppAbs
+                    _: (fn x:T2' => t11[x]) t2 -> t11[t2]
+                    where t1 := fn x:T2' => t11[x]
+                    and t' := t11[t2]
+                is
+                    proof by case analysis on d1:
+                        case rule
+                            v1: (fn x : T2' => t11[x]) : (T2 -> T1) in *
+                            ------------------------------------------ T-Var
+                            _: * |- (fn x : T2' => t11[x]) : (T2 -> T1)
+                        is
+                            proof by contradiction on v1
+                        end case
+
+                        case rule
+                            d11: (*, x : T2) |- t11[x] : T1
+                            ------------------------------------------- T-Abs
+                            _: * |- (fn x : T2 => t11[x]) : (T2 -> T1)
+                            where T2' := T2
+                        is
+                            proof by lemma subst on d11, d2
+                        end case
+
+                    end case analysis
+                    // TODO: Replace to use Lemma 15.3.3(1)
+                end case
+            end case analysis
+        end case
+    end induction
+end theorem
+
+
