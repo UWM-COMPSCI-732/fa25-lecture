@@ -491,6 +491,52 @@ theorem progress :
     forall d: * |- t : T
     exists t value or t -> t' .
     proof by induction on d:
+        case rule
+            dr: * |- r : R
+            -------------------------- T-Rcd
+            _: * |- { r : { R
+            where t := { r
+            and T := { R
+        is
+            o: r value or r -> r' by lemma progress-rcd on dr 
+            proof by case analysis on o:
+                case or vr: r value is
+                    _: { r value by rule val-rcd on vr
+                end case
+
+                case or er: r -> r' is
+                    _: { r -> { r' by rule E-Rcd on er
+                end case
+
+            end case analysis
+        end case
+
+        case rule
+            d1: * |- t1 : {R
+            L: R @ l = T
+            -------------------------- T-Proj
+            _: * |- (t1 @ l) : T
+            where t := t1 @ l
+        is
+            o: t1 value or t1 -> t1' by induction hypothesis on d1
+            _: t -> t' by case analysis on o:
+                case or v1: t1 value is
+                    eq: t1 == { r1 and
+                    vr1: r1 value and
+                    dr1: * |- r1 : R by lemma canonical-forms-Rcd on d1, v1
+                    use inversion on eq where t1 := { r1
+                    d': * |- t' : T and
+                    l1: r1 @ l = t' by lemma typed-Rlookup-implies-typed-lookup on dr1, L
+                    proof by rule E-ProjRcd on v1, l1
+                end case
+
+                case or e1: t1 -> t1' is
+                    proof by rule E-Proj on e1
+                end case
+
+            end case analysis
+        end case
+
 	// TODO: In lecture
         case rule
             ------------------ T-Unit
@@ -792,6 +838,91 @@ lemma lookup-not-lookup-contradiction:
     end induction
 end lemma
 
+lemma typed-Lookup-implies-lookup-typed:
+    forall dr: * |- r : R
+    forall L:  R @ l = T
+    forall f:  r @ l = t
+    exists * |- t : T
+    proof by case analysis on L:
+        case rule
+            ---------------------- Lookup-here
+            _: (l:T, R1) @ l = T
+            where R := l:T, R1
+        is
+            proof by case analysis on dr:
+                case rule
+                    d': * |- t' : T
+                    _: * |- r1 : R1
+                    u: * |- r1 @ l undefined
+                    -------------------------------- T-RcdMore
+                    _: * |- (l = t', r1) : (l:T, R1)
+                    where r := l=t', r1
+                is
+                    proof by case analysis on f:
+                        case rule
+                            ---------------------- lookup-here
+                            _: (l = t, r1) @ l = t
+                            where t' := t
+                        is
+                            proof by d'
+                        end case
+
+                        case rule
+                            l1: r1 @ l = t
+                            ------------------------ lookup-there
+                            _: (l = t', r1) @ l = t
+                        is
+                            _: contradiction by lemma lookup-not-lookup-contradiction on l1, u
+                        end case
+
+                    end case analysis
+                end case
+
+            end case analysis
+        end case
+
+        case rule
+            L1: R1 @ l = T
+            ------------------------ Lookup-there
+            _: (l1:T1, R1) @ l = T
+            where R := l1:T1, R1
+        is
+            proof by case analysis on dr:
+                case rule
+                    _: * |- t1 : T1
+                    _: * |- r1 : R1
+                    _: * |- r1 @ l1 undefined
+                    -------------------------------- T-RcdMore
+                    _: * |- (l1 = t1, r1) : (l1 : T1, R1)
+                    where r := l1=t1, r1
+                is
+                    proof by case analysis on f:
+                        case rule
+                            ---------------------- lookup-here
+                            _: (l = t, r1) @ l = t
+                            where l1 := l
+                            and t1 := t
+                        is
+                            proof by unproved
+                        end case
+
+                        case rule
+                            _: r1 @ l = t
+                            ------------------------ lookup-there
+                            _: (l1 = t1, r1) @ l = t
+                        is
+                            proof by unproved
+                        end case
+
+                    end case analysis
+                end case
+
+            end case analysis
+        end case
+
+    end case analysis
+end lemma
+
 lemma preservationr :
     forall d: * |- r : R
     forall e: r -> r'
@@ -847,6 +978,41 @@ theorem preservation :
     forall e: t -> t'
     exists * |- t' : T .
     _ : * |- t' : T by induction on d:
+        case rule
+            d1: * |- t1 : ({ R)
+            L: R @ l = T
+            -------------------------- T-Proj
+            _: * |- (t1 @ l) : T
+            where t := t1 @ l
+        is
+            proof by case analysis on e:
+                case rule
+                    e1: t1 -> t1'
+                    ---------------------- E-Proj
+                    _: (t1 @ l) -> (t1' @ l)
+                    where t' := t1' @ l
+                is
+                    d1': * |- t1' : {R by induction hypothesis on d1, e1
+                    proof by rule T-Proj on d1', L 
+                end case
+
+                case rule
+                    v1: { r value
+                    l1: r @ l = t'
+                    ------------------ E-ProjRcd
+                    _: { r @ l -> t'
+                    where t1 := { r
+                is
+                    eq: t1 == { r1 and
+                    vr1: r1 value and
+                    dr1: * |- r1 : R by lemma canonical-forms-Rcd on d1, v1
+                    use inversion on eq where r1 := r
+                    proof by lemma typed-Lookup-implies-lookup-typed on dr1, L, l1
+                end case
+
+            end case analysis
+        end case
+
         // TODO: Lecture: add T-Proj
         case rule
             dr: * |- r : R
