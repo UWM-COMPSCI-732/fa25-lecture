@@ -1,0 +1,1988 @@
+/**
+ * Nomimal subtyping
+ * CompSci 732
+ * (Required only for graduate students)
+ */
+package edu.uwm.cs732;
+
+terminals unit value
+          Unit in fn inl inr of X undefined Top
+          struct
+
+
+module Nat = org.sasylf.util.Natural
+
+syntax l = Nat.n
+
+    
+syntax
+ 
+t ::= unit
+  | fn x:T => t[x]
+  | x
+  | t t
+  | struct l { r
+  | t @ l
+
+r ::= l=t, r
+   |  }
+   
+S, T ::= Unit
+  | T -> T
+  | struct l
+  | Top
+  
+R ::= l:T, R
+   |  }
+ 
+P ::= struct l {}
+   | P; struct l :: struct l { R
+   
+Gamma ::= *
+      | Gamma, x : T
+
+
+
+judgment equal: t == t
+
+------ eq
+t == t
+
+judgment tequal: T == T
+
+------ teq
+T == T
+
+judgment requal: r == r
+
+------- req
+r == r
+
+judgment Requal: R == R
+
+------ Req
+R == R
+
+
+judgment lequal = Nat.equal : l == l
+
+judgment lnotequal = Nat.notequal : l <> l
+
+judgment isavalue: t value
+
+
+---------- val-unit
+unit value
+
+-------------------- val-fn
+fn x:T => t[x] value
+
+r value
+---------- val-rcd
+struct l { r value
+
+judgment risavalue: r value
+
+-------- val-empty
+} value
+
+t value
+r value
+------------ val-more
+(l=t, r) value
+
+
+judgment eval: t -> t
+
+t1 -> t1'
+--------------- E-App1
+t1 t2 -> t1' t2
+
+t1 value
+t2 -> t2'
+--------------- E-App2
+t1 t2 -> t1 t2'
+
+t2 value
+------------------------------ E-AppAbs
+(fn x:T => t1[x]) t2 -> t1[t2]
+
+t -> t'
+---------------- E-Proj
+t @ l -> t' @ l
+
+r -> r'
+-------------- E-Rcd
+struct l { r -> struct l { r'
+
+struct l' {r value
+r @ l = t
+------------ E-ProjRcd
+struct l' {r @ l -> t
+
+judgment reval: r -> r
+
+t -> t'
+-------------------- E-RcdHere
+(l=t, r) -> (l=t', r)
+
+t value
+r -> r'
+--------------------- E-RcdThere
+(l=t, r) -> (l=t, r')
+
+
+judgment rlookup: r @ l = t
+
+---------------- lookup-here
+(l=t, r) @ l = t
+
+r @ l = t
+------------------ lookup-there
+(l'=t', r) @ l = t
+
+judgment no-lookup: Gamma |- r@l undefined
+assumes Gamma
+
+---------------------- no-lookup-none
+Gamma |- }@l undefined
+
+l1 <> l2
+Gamma |- r @l2 undefined
+------------------------------ no-lookup-more
+Gamma |- (l1=t1,r)@l2 undefined
+
+judgment no-Lookup: R@l undefined
+
+------------- no-Lookup-none
+}@l undefined
+
+l1 <> l2
+R @l2 undefined
+------------------------------ no-Lookup-more
+(l1:T1,R)@l2 undefined
+
+
+judgment struct-undefined: P |- struct l undefined
+
+l1 <> l2
+------------------------ su-undef
+struct l1 {} |- struct l2 undefined
+
+l1 <> l3
+P |- struct l3 undefined
+-------------------------------------- su-not-equal
+P; struct l1 :: struct l2 { R |- struct l3 undefined
+
+
+judgment subtype: P |- T <: T
+
+
+----------- S-Refl
+P |- T <: T
+
+P |- T1 <: T2
+P |- T2 <: T3
+-------------- S-Trans
+P |- T1 <: T3
+
+------------- S-Top
+P |- T <: Top
+
+P |- S' <: S
+P |- T <: T'
+----------------------- S-Arr
+P |- S -> T <: S' -> T'
+
+P |- T <: T'
+------------------------ S-Skip
+P; struct l :: struct l' { R |- T <: T'
+
+P |- struct l1 undefined
+-------------------------------------------------------- S-Sub
+P; struct l1 :: struct l2 { R |- struct l1 <: struct l2
+
+
+judgment record-append: R # R = R
+
+--------- ra-emp
+} # R = R
+
+R1 # R2 = R3
+R1 @ l undefined
+R2 @ l undefined
+----------------------- ra-one
+l:T, R1 # R2 = l:T, R3
+
+
+judgment struct-fields: P |- struct l = { R
+
+-------------------------------- sf-base
+struct l { } |- struct l = { }
+
+P |- struct l1 = { R2
+R1 # R2 = R3
+-------------------------------------------------- sf-extend
+P; struct l2 :: struct l1 { R1 |- struct l2 = { R3
+ 
+P |- struct l = { R
+l1 <> l
+------------------------------------------------- sf-there
+P; struct l1 :: struct l1' { R1 |- struct l = { R
+
+judgment program-ok: |- P
+
+--------------------- ok-base
+|- struct l { } 
+
+|- P
+P |- struct l1 undefined
+P |- struct l2 = { R2
+R1 # R2 = R3
+--------------------------------- ok-extend
+|- P; struct l1 :: struct l2 { R1
+
+judgment isvar: t : T in Gamma
+assumes Gamma
+
+----------------------- var
+x : T in (Gamma, x : T)
+
+
+judgment type: P; Gamma |- t : T
+assumes Gamma
+
+----------------------- T-Unit
+P; Gamma |- unit : Unit
+
+t : T in Gamma
+----------------- T-Var
+P; Gamma |- t : T
+
+P; Gamma, x : T1 |- t[x] : T2
+---------------------------------------- T-Abs
+P; Gamma |- (fn x:T1 => t[x]) : T1 -> T2
+
+P; Gamma |- t1 : T2 -> T1
+P; Gamma |- t2 : T2
+-------------------------- T-App
+P; Gamma |- t1 t2 : T1
+
+P |- struct l = { R
+P; Gamma |- r : R
+-------------------- T-Rcd
+P; Gamma |- struct l { r : struct l
+
+P; Gamma |- t : struct l'
+P |- struct l' = { R
+R @ l = T
+-------------------- T-Proj
+P; Gamma |- t @ l : T
+
+P; Gamma |- t : S
+P |- S <: T
+---------------- T-Sub
+P; Gamma |- t : T
+
+
+judgment rtyping: P; Gamma |- r : R
+assumes Gamma
+
+--------------- T-RcdEmpty
+P; Gamma |- } : }
+
+P; Gamma |- t : T
+P; Gamma |- r : R
+Gamma |- r@l undefined
+-------------------------- T-RcdMore
+P; Gamma |- (l=t, r) : (l:T, R)
+
+
+judgment Rlookup: R @ l = T
+
+---------------- Lookup-here
+(l:T, R) @ l = T
+
+R @ l = T
+------------------ Lookup-there
+(l':T', R) @ l = T
+
+// #(
+
+lemma record-append-unique:
+    forall ra3: R1 # R2 = R3
+    forall ra4: R1 # R2 = R4
+    exists R3 == R4
+    proof by induction on ra3:
+        case rule
+            --------------- ra-emp
+            _: } # R2 = R2
+            where R1 := }
+            and R3 := R2
+        is
+            use inversion on ra4 where R4 := R2
+            proof by rule Req
+        end case
+
+        case rule
+            ra3': R1' # R2 = R3'
+            _: R1' @ l undefined
+            _: R2 @ l undefined
+            ----------------------------- ra-one
+            _: (l:T, R1') # R2 = (l:T, R3')
+            where R1 := l:T, R1'
+            and R3 := l:T, R3'
+        is
+            ra4': R1' # R2 = R4' and
+            _: R1' @ l undefined and
+            _: R2 @ l undefined by inversion on ra4
+            where R4 := l:T, R4'
+            eq': R3' == R4' by induction hypothesis on ra3', ra4'
+            use inversion on eq' where R3' := R4'
+            proof by rule Req
+        end case
+
+    end induction
+end lemma
+
+lemma record-append-preserves-undefined:
+   forall u1: R1 @ l undefined
+   forall u2: R2 @ l undefined
+   forall ra: R1 # R2 = R3
+   exists R3 @ l undefined
+   proof by induction on ra:
+       case rule
+           --------------- ra-emp
+           _: } # R2 = R2
+           where R1 := }
+           and R3 := R2
+       is
+           proof by u2
+       end case
+
+       case rule
+           ra': R1' # R2 = R3'
+           u1'': R1' @ l' undefined
+           u2': R2 @ l' undefined
+           ----------------------------- ra-one
+           _: (l':T', R1') # R2 = (l':T', R3')
+           where R1 := l':T', R1'
+           and R3 := l':T', R3'
+       is
+           proof by case analysis on u1:
+               case rule
+                   ne: l' <> l
+                   u1': R1' @ l undefined
+                   ------------------------------------ no-Lookup-more
+                   _: (l' : T', R1') @ l undefined
+               is
+                   u3': R3' @ l undefined by induction hypothesis on u1', u2, ra'
+                   proof by rule no-Lookup-more on ne, u3' 
+               end case
+           end case analysis
+       end case
+
+   end induction
+end lemma
+
+lemma record-append-preserves-undefined-converse:
+   forall u3: R3 @ l undefined
+   forall ra: R1 # R2 = R3
+   exists R1 @ l undefined and R2 @ l undefined
+   proof by induction on ra:
+       case rule
+           --------------- ra-emp
+           _: } # R2 = R2
+           where R1 := }
+           and R3 := R2
+       is
+           u1: } @ l undefined by rule no-Lookup-none 
+           proof by u1, u3
+       end case
+
+       case rule
+           ra': R1' # R2 = R3'
+           u1'': R1' @ l' undefined
+           u2': R2 @ l' undefined
+           ----------------------------- ra-one
+           _: (l':T', R1') # R2 = (l':T', R3')
+           where R1 := l':T', R1'
+           and R3 := l':T', R3'
+       is
+           proof by case analysis on u3:
+               case rule
+                   ne: l' <> l
+                   u3': R3' @ l undefined
+                   ------------------------------------ no-Lookup-more
+                   _: (l' : T', R3') @ l undefined
+               is
+                   u1': R1' @ l undefined and
+                   u2: R2 @ l undefined by induction hypothesis on u3', ra'
+                   u1: R1 @ l undefined by rule no-Lookup-more on ne, u1'
+                   proof by u1, u2
+               end case
+           end case analysis
+       end case
+
+   end induction
+end lemma
+   
+lemma record-append-associative:
+   forall ra1: R2 # R1 = R3
+   forall ra2: R4 # R3 = R7
+   exists R6 # R1 = R7
+   proof by induction on ra2:
+       case rule
+           --------------- ra-emp
+           _: } # R3 = R3
+           where R7 := R3
+           and R4 := }
+       is
+           proof by ra1
+       end case
+
+       case rule
+           ra2': R4' # R3 = R7'
+           u4': R4' @ l undefined
+           u3: R3 @ l undefined
+           ----------------------------- ra-one
+           _: (l:T, R4') # R3 = (l:T, R7')
+           where R7 := l:T, R7'
+           and R4 := l:T, R4'
+       is
+           ra': R6' # R1 = R7' by induction hypothesis on ra1, ra2'
+           u7': R7' @ l undefined by lemma record-append-preserves-undefined on u4', u3, ra2'
+           u6': R6' @ l undefined and
+           u1: R1 @ l undefined by lemma record-append-preserves-undefined-converse on u7', ra'
+           proof by rule ra-one on ra', u6', u1
+       end case
+
+   end induction
+end lemma
+    
+lemma struct-fields-defined-or-undefined:
+    forall ok: |- P
+    forall l
+    exists P |- struct l = { R or P |- struct l undefined
+    proof by induction on ok:
+        case rule
+            --------------------------- ok-base
+            _: |- struct l1 {}
+            where P := struct l1 {}
+        is
+            q: l1 == l or l1 <> l by theorem Nat.eq-or-ne on l1, l
+            proof by case analysis on q:
+                case or eq: l1 == l is
+                    use inversion on eq where l1 := l
+                    _: P |- struct l = { } by rule sf-base
+                end case
+
+                case or n: l1 <> l is
+                    _: P |- struct l undefined by rule su-undef on n
+                end case
+
+            end case analysis
+        end case
+
+        case rule
+            ok1: |- P1
+            u1: P1 |- struct l1 undefined
+            f2: P1 |- struct l2 = { R2
+            ra: R1 # R2 = R3
+            --------------------------------------- ok-extend
+            _: |- P1; struct l1 :: struct l2 { R1
+            where P := P1; struct l1 :: struct l2 { R1
+        is
+            q: l1 == l or l1 <> l by theorem Nat.eq-or-ne on l1, l
+            proof by case analysis on q:
+                case or eq: l1 == l is
+                    use inversion on eq where l1 := l
+                    _: P |- struct l = { R3 by rule sf-extend on f2, ra
+                end case
+
+                case or n: l1 <> l is
+                    o1: P1 |- struct l = { R or P1 |- struct l undefined by induction hypothesis on ok1, l
+                    proof by case analysis on o1:
+                        case or f1: P1 |- struct l = {R is
+                            _: P |- struct l = {R by rule sf-there on f1, n
+                        end case
+
+                        case or u: P1 |- struct l undefined is
+                            _: P |- struct l undefined by rule su-not-equal on n, u
+                        end case
+
+                    end case analysis
+                end case
+
+            end case analysis
+       end case
+    end induction
+end lemma
+
+lemma struct-fields-contradiction:
+    forall f: P |- struct l = { R
+    forall u: P |- struct l undefined
+    exists contradiction
+    proof by induction on u:
+        case rule
+            ne: l' <> l
+            ------------------------------ su-undef
+            _: struct l' {} |- struct l undefined
+            where P := struct l' {}
+        is
+            proof by case analysis on f:
+                case rule
+                    -------------------------------------- sf-base
+                    _: struct l {} |- struct l = { }
+                    where l' := l
+                    and R := }
+                is
+                    proof by theorem Nat.ne-anti-reflexive on ne
+                end case
+
+            end case analysis
+        end case
+
+        case rule
+            ne: l1 <> l
+            u1: P1 |- struct l undefined
+            -------------------------------------------- su-not-equal
+            _: P1; struct l1 :: struct l1' { R1 |- struct l undefined
+            where P := P1; struct l1 :: struct l1' { R1
+        is
+            proof by case analysis on f:
+                case rule
+                    _: P1 |- struct l1' = { R1'
+                    _: R1 # R1' = R
+                    -------------------------------------------------------- sf-extend
+                    _: P1; struct l :: struct l1' { R1 |- struct l = { R
+                    where l1 := l
+                is
+                    proof by theorem Nat.ne-anti-reflexive on ne
+                end case
+
+                case rule
+                    f1: P1 |- struct l = { R
+                    _: l1 <> l
+                    ------------------------------------------------------- sf-there
+                    _: (P1; struct l1 :: struct l1' { R1) |- struct l ={ R
+                is
+                    proof by induction hypothesis on f1, u1
+                end case
+
+            end case analysis
+        end case
+
+    end induction
+end lemma
+
+lemma struct-fields-unique: 
+    forall f1: P |- struct l = { R1
+    forall f2: P |- struct l = { R2
+    exists R1 == R2
+    use induction on f1
+    proof by case analysis on f1:
+        case rule
+            -------------------------------------- sf-base
+            _: struct l {} |- struct l = { }
+            where P := struct l {}
+            and R1 := }
+        is
+            use inversion on f2 where R2 := }
+            proof by rule Req
+        end case
+
+        case rule
+            f3: P1 |- struct l3 = { R3
+            ra3: R3' # R3 = R1
+            -------------------------------------------------------- sf-extend
+            _: P1; struct l :: struct l3 { R3' |- struct l = { R1
+            where P := P1; struct l :: struct l3 { R3'
+        is
+            proof by case analysis on f2:
+                case rule
+                    f4: P1 |- struct l3 = { R4
+                    ra4: R3' # R4 = R2
+                    -------------------------------------------------------- sf-extend
+                    _: (P1; struct l :: struct l3 { R3') |- struct l ={ R2
+                is
+                    eq34: R3 == R4 by induction hypothesis on f3, f4
+                    use inversion on eq34 where R4 := R3
+                    proof by lemma record-append-unique on ra3, ra4
+                end case
+
+                case rule
+                    _: P1 |- struct l ={ R2
+                    ne: l <> l
+                    ------------------------------------------------------- sf-there
+                    _: (P1; struct l :: struct l3 { R3') |- struct l ={ R2
+                is
+                    _: contradiction by theorem Nat.ne-anti-reflexive on ne
+                end case
+
+            end case analysis
+        end case
+
+        case rule
+            f11: P1 |- struct l = { R1
+            ne: l' <> l
+            ------------------------------------------------------- sf-there
+            _: P1; struct l' :: struct l'' { R' |- struct l = { R1
+            where P := P1; struct l' :: struct l'' { R' 
+        is
+            proof by case analysis on f2:
+                case rule
+                    _: P1 |- struct l'' ={ R0
+                    _: R' # R0 = R2
+                    -------------------------------------------------------- sf-extend
+                    _: (P1; struct l :: struct l'' { R') |- struct l ={ R2
+                    where l' := l
+                is
+                    _: contradiction by theorem Nat.ne-anti-reflexive on ne
+                end case
+
+                case rule
+                    f21: P1 |- struct l = { R2
+                    _: l' <> l
+                    ------------------------------------------------------- sf-there
+                    _: (P1; struct l' :: struct l'' { R') |- struct l ={ R2
+                is
+                    proof by induction hypothesis on f11, f21
+                end case
+
+            end case analysis
+        end case
+
+    end case analysis
+end lemma
+
+// Lemma 15.3.2 (1)
+lemma subtype-inversion-Arrow:
+    forall d: P |- S <: T1 -> T2
+    exists S == S1 -> S2 and P |- T1 <: S1 and P |- S2 <: T2 .
+    proof by induction on d:
+        case rule
+            d1: P1 |- S <: (T1 -> T2)
+            ------------------------------ S-Skip
+            _: P1; struct l :: struct l' { R  |- S <: (T1 -> T2)
+            where P := P1; struct l ::struct l' { R
+        is
+            eq: S == S1 -> S2 and
+            s11: P1 |- T1 <: S1 and
+            s12: P1 |- S2 <: T2 by induction hypothesis on d1
+            s1: P |- T1 <: S1 by rule S-Skip on s11
+            s2: P |- S2 <: T2 by rule S-Skip on s12
+            proof by eq, s1, s2
+        end case
+
+        case rule
+            ------------ S-Refl
+            _: P |- (T1 -> T2) <: (T1 -> T2)
+            where S := T1 -> T2
+        is
+            eq: S == T1 -> T2 by rule teq
+            d1: P |- T1 <: T1 by rule S-Refl
+            d2: P |- T2 <: T2 by rule S-Refl
+            proof by eq, d1, d2
+        end case
+
+        case rule
+            s1: P |- S <: S'
+            s2: P |- S' <: (T1 -> T2)
+            -------------- S-Trans
+            _: P |- S <: (T1 -> T2)
+        is
+            eq': S' == S1' -> S2' and 
+            d1'': P |- T1 <: S1' and 
+            d2'': P |- S2' <: T2 by induction hypothesis on s2
+            use inversion of rule teq on eq' where S' := S1' -> S2'
+            eq: S == S1 -> S2 and
+            d1': P |- S1' <: S1 and
+            d2': P |- S2 <: S2' by induction hypothesis on s1
+            d1: P |- T1 <: S1 by rule S-Trans on d1'', d1'
+            d2: P |- S2 <: T2 by rule S-Trans on d2', d2''
+            proof by eq, d1, d2
+        end case
+
+        case rule
+            d1: P |- T1 <: S1
+            d2: P |- S2 <: T2
+            ------------------------ S-Arr
+            _: P |- S1 -> S2 <: T1 -> T2
+            where S := S1 -> S2
+        is
+            eq: S == S1 -> S2 by rule teq
+            proof by eq, d1, d2
+        end case
+
+    end induction
+end lemma
+
+lemma subtype-undefined-inversion:
+    forall ok: |- P
+    forall s: P |- T <: struct l
+    forall u: P |- struct l undefined
+    exists T == struct l
+    use induction on s
+    proof by case analysis on s:
+        case rule
+            ----------------- S-Refl
+            _: P |- (struct l) <: (struct l)
+            where T:= struct l
+        is
+            proof by rule teq
+        end case
+
+        case rule
+            s1: P |- T <: T'
+            s2: P |- T' <: (struct l)
+            -------------------- S-Trans
+            _: P |- T <: (struct l)
+        is
+            eq': T' == struct l by induction hypothesis on ok, s2, u
+            use inversion on eq' where T' := struct l
+            proof by induction hypothesis on ok, s1, u
+        end case
+
+        case rule
+            s1: P1 |- T <: (struct l)
+            ------------------------------ S-Skip
+            _: (P1; struct l0 :: struct l1 { R0) |- T <: (struct l)
+            where P := P1; struct l0 :: struct l1 { R0
+        is
+            u1 : P1 |- struct l undefined by inversion on u
+            proof by case analysis on ok:
+                case rule
+                    ok1: |- P1
+                    _: P1 |- struct l0 undefined
+                    _: P1 |- struct l1 = {R1
+                    _: R0 # R1 = R2
+                    --------------------------------------- ok-extend
+                    _: |- (P1; struct l0 :: struct l1 { R0)
+                is
+                    proof by induction hypothesis on ok1, s1, u1
+                end case
+
+            end case analysis
+        end case
+
+        case rule
+            _: P1 |- struct l1 undefined
+            -------------------------------------------------------------- S-Sub
+            _: (P1; struct l1 :: struct l { R1) |- (struct l1) <: (struct l)
+            where P := P1; struct l1 :: struct l { R1
+            and T := struct l1
+        is
+            u1 : P1 |- struct l undefined by inversion on u 
+            proof by case analysis on ok:
+                case rule
+                    _: |- P1
+                    _: P1 |- struct l1 undefined
+                    f1: P1 |- struct l = {R0
+                    _: R1 # R0 = R2
+                    --------------------------------------- ok-extend
+                    _: |- (P1; struct l1 :: struct l { R1)
+                is
+                    _: contradiction by lemma struct-fields-contradiction on f1, u1
+                end case
+
+            end case analysis
+        end case
+
+    end case analysis
+end lemma 
+    
+    // Lemma 15.3.2 (2)
+// We drastically simplify:
+lemma subtype-inversion-Rcd:
+    forall ok: |- P
+    forall d: P |- S <: struct l1
+    forall f: P |- struct l1 = { R1
+    exists S == struct l2 and P |- struct l2 = { R2 and R # R1 = R2.
+    proof by induction on d:
+        case rule
+            d1: P1 |- S <: (struct l1)
+            ------------------------------ S-Skip
+            _: P1; struct l0 :: struct l0' { R0 |- S <: (struct l1)
+            where P := P1; struct l0 :: struct l0' { R0
+        is
+            q: l0 == l1 or l0 <> l1 by theorem Nat.eq-or-ne on l0, l1
+            do case analysis on q:
+                case or eq: l0 == l1 is
+                    use inversion on eq where l0 := l1
+                    proof by case analysis on f:
+                        case rule
+                            _: P1 |- struct l1 = { R1
+                            nec: l1 <> l1
+                            ------------------------------------------------------- sf-there
+                            _: (P1; struct l1 :: struct l0' { R0) |- struct l1 ={ R1
+                        is
+                            _: contradiction by theorem Nat.ne-anti-reflexive on nec
+                        end case
+
+                        case rule
+                            _: P1 |- struct l0' = { R0'
+                            _: R0 # R0' = R1
+                            -------------------------------------------------------- sf-extend
+                            _: (P1; struct l1 :: struct l0' { R0) |- struct l1 ={ R1
+                        is
+                            proof by case analysis on ok:
+                                case rule
+                                    ok1: |- P1
+                                    u1: P1 |- struct l1 undefined
+                                    _: P1 |- struct l0' = { R3
+                                    _: R0 # R3 = R4
+                                    --------------------------------------- ok-extend
+                                    _: |- (P1; struct l1 :: struct l0' { R0)
+                                is
+                                    eqS: S == struct l1 by lemma subtype-undefined-inversion on ok1, d1, u1
+                                    use inversion on eqS where S := struct l1
+                                    ra : } # R1 = R1 by rule ra-emp
+                                    proof by eqS, f, ra
+                                end case
+
+                            end case analysis
+                        end case
+
+                    end case analysis
+                end case
+            end case analysis
+            ne: l0 <> l1 by inversion on q
+            f1: P1 |- struct l1 = { R1 by case analysis on f:
+                case rule
+                    _: P1 |- struct l0' = {R2
+                    _: R0 # R2 = R1
+                    -------------------------------------------------------- sf-extend
+                    _: (P1; struct l1 :: struct l0' { R0) |- struct l1 = {R1
+                    where l0 := l1
+                is
+                    _: contradiction by theorem Nat.ne-anti-reflexive on ne
+                end case
+
+                case rule
+                    f1: P1 |- struct l1 = { R1
+                    _: l0 <> l1
+                    ------------------------------------------------------- sf-there
+                    _: (P1; struct l0 :: struct l0' { R0) |- struct l1 ={ R1
+                is
+                    proof by f1
+                end case
+
+            end case analysis
+            proof by case analysis on ok:
+                case rule
+                    ok1: |- P1
+                    u0: P1 |- struct l0 undefined
+                    _: P1 |- struct l0' = { R0'
+                    _: R0 # R0' = R3
+                    --------------------------------------- ok-extend
+                    _: |- (P1; struct l0 :: struct l0' { R0)
+                is
+                    eq: S == struct l2 and
+                    f12: P1 |- struct l2 = { R2 and 
+                    ra: R # R1 = R2 by induction hypothesis on ok1, d1, f1
+                    q2: l0 == l2 or l0 <> l2 by theorem Nat.eq-or-ne on l0, l2
+                    do case analysis on q2:
+                        case or eq2: l0 == l2 is
+                            use inversion on eq2 where l0 := l2
+                            _: contradiction by lemma struct-fields-contradiction on f12, u0 
+                        end case
+                    end case analysis
+                    ne2: l0 <> l2 by inversion on q2
+                    f2: P |- struct l2 = { R2 by rule sf-there on f12, ne2
+                    proof by eq, f2, ra
+                end case
+
+            end case analysis
+        end case
+
+        case rule
+            u: P1 |- struct l2 undefined
+            -------------------------------------------------------------- S-Sub
+            _: P1; struct l2 :: struct l1 { R |- (struct l2) <: (struct l1)
+            where P := P1; struct l2 :: struct l1 { R
+            and S := struct l2
+        is
+            eq: S == struct l2 by rule teq
+            proof by case analysis on ok:
+                case rule
+                    _: |- P1
+                    u12: P1 |- struct l2 undefined
+                    f1': P1 |- struct l1 = { R1'
+                    ra': R # R1' = R2
+                    --------------------------------------- ok-extend
+                    _: |- P1; struct l2 :: struct l1 { R
+                is
+                    eqR: R1' == R1 by case analysis on f:
+                        case rule
+                            f11: P1 |- struct l1 = { R0
+                            _: R # R0 = R1
+                            -------------------------------------------------------- sf-extend
+                            _: (P1; struct l1 :: struct l1 { R) |- struct l1 = { R1
+                            where l2 := l1
+                        is
+                            _: contradiction by lemma struct-fields-contradiction on f11, u12
+                        end case
+
+                        case rule
+                            f1: P1 |- struct l1 = { R1
+                            _: l2 <> l1
+                            ------------------------------------------------------- sf-there
+                            _: (P1; struct l2 :: struct l1 { R) |- struct l1 ={ R1
+                        is
+                            proof by lemma struct-fields-unique on f1', f1
+                        end case
+
+                    end case analysis
+                    use inversion on eqR where R1' := R1
+                    f2: P |- struct l2 = { R2 by rule sf-extend on f1', ra'
+                    proof by eq, f2, ra'
+                end case
+
+            end case analysis
+        end case
+
+        case rule
+            ------------ S-Refl
+            _: P |- struct l1 <: struct l1
+            where S := struct l1
+        is
+            e: S == struct l1 by rule teq
+            ra: } # R1 = R1 by rule ra-emp
+            proof by e, f, ra
+        end case
+
+        case rule
+            d1: P |- S <: T
+            d2: P |- T <: struct l1
+            -------------- S-Trans
+            _: P |- S <: struct l1
+        is
+            et: T == struct l1' and
+            s'': P |- struct l1' = { R1' and 
+            ra': R' # R1 = R1' by induction hypothesis on ok, d2, f
+            use inversion of rule teq on et where T := struct l1'
+            es: S == struct l2 and
+            f2: P |- struct l2 = { R2 and
+            ra2: R'' # R1' = R2 by induction hypothesis on ok, d1, s''
+            ra: R # R1 = R2 by lemma record-append-associative on ra', ra2
+            proof by es, f2, ra
+        end case
+
+    end induction
+end lemma
+ 
+// Lemma 15.3.3
+lemma type-inversion-Arrow:
+    assumes Gamma
+    forall d: P; Gamma |- fn x:S1 => t[x] : T1 -> T2
+    exists P |- T1 <: S1 and P; Gamma, x:S1 |- t[x] : T2.
+    proof by induction on d:
+        case rule
+            v: (fn x : S1 => t[x]) : (T1 -> T2) in Gamma
+            -------------------- T-Var
+            _: P; Gamma |- (fn x : S1 => t[x]) : (T1 -> T2)
+        is
+            proof by contradiction on v
+        end case
+
+        case rule
+            d': P; Gamma, x : T1 |- t[x] : T2
+            ------------------------------------------- T-Abs
+            _: P; Gamma |- (fn x : T1 => t[x]) : (T1 -> T2)
+            where S1 := T1
+        is
+            s: P |- T1 <: T1 by rule S-Refl
+            proof by s, d'
+        end case
+
+        case rule
+            d': P; Gamma |- (fn x : S1 => t[x]) : T'
+            st: P |- T' <: (T1 -> T2)
+            ---------------------- T-Sub
+            _: P; Gamma |- (fn x : S1 => t[x]) : (T1 -> T2)
+        is
+            et': T' == T1' -> T2' and
+            s1: P |- T1 <: T1' and
+            s2: P |- T2' <: T2 by lemma subtype-inversion-Arrow on st
+            use inversion of rule teq on et' where T' := T1' -> T2'
+            s': P |- T1' <: S1 and
+            dt': P; Gamma, x : S1 |- t[x] : T2' by induction hypothesis on d' 
+            s: P |- T1 <: S1 by rule S-Trans on s1, s'
+            dt: P; Gamma, x : S1 |- t[x] : T2 by rule T-Sub on dt', s2
+            proof by s, dt
+        end case
+
+    end induction
+end lemma
+
+lemma type-inversion-Rcd:
+    assumes Gamma
+    forall ok: |- P
+    forall d: P; Gamma |- struct l1 { r : struct l2
+    forall sf2: P |- struct l2 = { R2
+    exists P; Gamma |- r : R1 and R12 # R2 = R1.
+    proof by induction on d:
+        case rule
+            v: (struct l1 { r) : struct l2 in Gamma
+            -------------------- T-Var
+            _: P; Gamma |- (struct l1 { r) : struct l2
+        is
+            proof by contradiction on v
+        end case
+
+        case rule
+            sf1: P |- struct l1 = { R1
+            dr: P; Gamma |- r : R1
+            -------------------------- T-Rcd
+            _: P; Gamma |- (struct l1 { r) : struct l1
+            where l2 := l1
+        is
+            eqR: R1 == R2 by lemma struct-fields-unique on sf1, sf2
+            use inversion on eqR where R1 := R2   
+            s: } # R1 = R1 by rule ra-emp
+            proof by dr, s
+        end case
+
+        case rule
+            d': P; Gamma |- (struct l1 { r) : S
+            ss: P |- S <: struct l2
+            ---------------------- T-Sub
+            _: P; Gamma |- (struct l1 { r) : struct l2
+        is
+            es: S == struct l2' and
+            sf2': P |- struct l2' = { R2' and
+            ra2': R' # R2 = R2' by lemma subtype-inversion-Rcd on ok, ss, sf2
+            use inversion of rule teq on es where S := struct l2'
+            dr: P; Gamma |- r : R1 and
+            sa': R'' # R2' = R1 by induction hypothesis on ok, d', sf2'
+            ra: R12 # R2 = R1 by lemma record-append-associative on ra2', sa'
+            proof by dr, ra
+        end case
+
+    end induction
+end lemma     
+
+// Lemma 15.3.6 (1)
+lemma canonical-forms-Arrow:
+    forall d: P; * |- t : T1 -> T2
+    forall v: t value
+    exists t == fn x:T => t2[x]. // weakened from earlier
+    use induction on d
+    do case analysis on d:
+        case rule
+            var: t : T1->T2 in *
+            ------------------- T-Var
+            _: P; * |- t : T1 -> T2
+        is
+            proof by contradiction on var
+        end case
+        // #(
+        case rule
+            d': P; * |- t : S
+            s: P |- S <: T1 -> T2
+            ---------------- T-Sub
+            _: P; * |- t : T1 -> T2
+        is
+            se: S == S1 -> S2 and
+            _: P |- T1 <: S1 and
+            _: P |- S2 <: T2 by lemma subtype-inversion-Arrow on s
+            use inversion of rule teq on se where S := S1 -> S2
+            proof by induction hypothesis on d', v
+        end case
+   end case analysis
+    proof by case analysis on v:
+        case rule
+            _: r value
+            ---------------- val-rcd
+            _: (struct l { r) value
+            where t := struct l { r
+        is
+            proof by contradiction on d
+        end case
+        case rule
+            -------------------------- val-fn
+            _: (fn x : T0 => t2[x]) value
+            where t := fn x : T0 => t2[x]
+        is
+            proof by case analysis on d:
+                case rule
+                    _: P; *, x : T1 |- t2[x] : T2
+                    ------------------------------------------- T-Abs
+                    _: P; * |- (fn x : T1 => t2[x]) : T1 -> T2
+                    where T0 := T1
+                is
+                    proof by rule eq
+                end case
+
+            end case analysis
+        end case
+        case rule
+            --------------------- val-unit
+            _: unit value
+            where t := unit
+        is
+            proof by contradiction on d
+        end case
+    end case analysis
+end lemma  
+  
+lemma canonical-forms-Rcd :
+    forall ok: |- P
+    forall d: P; * |- t : struct l
+    forall f: P |- struct l = { R
+    forall v: t value
+    exists t == struct l' { r and r value and P |- struct l' = { R' and R'' # R = R' and P; * |- r : R'.
+    use induction on d
+    do case analysis on d:
+        case rule
+            var: t : struct l in *
+            ------------------- T-Var
+            _: P; * |- t : struct l
+        is
+            proof by contradiction on var
+        end case
+        // #(
+        case rule
+            d': P; * |- t : S
+            ss: P |- S <: struct l
+            ------------------- T-Sub
+            _: P; * |- t : struct l
+        is
+            es: S == struct l'' and 
+            f'': P |- struct l'' = { R2'' and
+            ra2: R2' # R = R2'' by lemma subtype-inversion-Rcd on ok, ss, f
+            use inversion of rule teq on es where S := struct l''
+            et: t == struct l' { r and
+            rv: r value and
+            f': P |- struct l' = { R' and
+            ra: R1 # R2'' = R' and
+            dr': P; * |- r : R' by induction hypothesis on ok, d', f'', v
+            ra3: R4 # R = R' by lemma record-append-associative on ra2, ra 
+            proof by et, rv, f', ra3, dr'
+        end case
+    end case analysis
+    proof by case analysis on v:
+        case rule
+            ---------------- val-unit
+            _: unit value
+            where t := unit
+        is
+            proof by contradiction on d
+        end case
+
+        case rule
+            -------------------------- val-fn
+            _: (fn x : T0 => t0[x]) value
+            where t := (fn x : T0 => t0[x])
+        is
+            proof by contradiction on d
+        end case
+
+        case rule
+            vr: r value
+            ---------------- val-rcd
+            _: struct l' { r value
+            where t := struct l' { r
+        is
+            proof by case analysis on d:
+                case rule
+                    f1: P |- struct l = { R1 
+                    dr: P; * |- r : R1
+                    -------------------------- T-Rcd
+                    _: P; * |- struct l { r : struct l
+                    where l' := l
+                is
+                    er: R1 == R by lemma struct-fields-unique on f1, f
+                    use inversion on er where R1 := R
+                    e: t == struct l { r by rule eq
+                    ss: } # R = R by rule ra-emp
+                    proof by e, vr, f, ss, dr
+                end case
+            end case analysis
+        end case
+    end case analysis
+end lemma     
+
+
+lemma subtype-has-lookup:
+    forall lk: R @ l = T
+    forall sr: R'' # R = R'
+    exists R' @ l = T.
+    proof by induction on sr:
+        case rule
+            sr1: R1'' # R = R1'
+            _: R1'' @ l' undefined
+            _: R @ l' undefined
+            ----------------------------- ra-one
+            _: (l' : T', R1'') # R = (l' : T', R1')
+            where R'' := l':T', R1''
+            and R' := l':T', R1'
+        is
+            ll': R1' @ l = T by induction hypothesis on lk, sr1 
+            proof by rule Lookup-there on ll'
+        end case
+
+        case rule
+            ------------- ra-emp
+            _: } # R = R
+            where R' := R
+            and R'' := }
+        is
+            proof by lk
+        end case
+
+ 
+    end induction
+end lemma
+
+lemma typed-Rlookup-implies-typed-lookup:
+    forall dr: P; * |- r : R
+    forall L: R @ l = T
+    exists P; * |- t : T and r @ l = t.
+    use induction on L
+    proof by case analysis on dr:
+        case rule
+            --------------------- T-RcdEmpty
+            _: P; * |- } : }
+            where r := } and R := }
+        is
+            proof by contradiction on L
+        end case
+
+        case rule
+            dt': P; * |- t' : T'
+            dr': P; * |- r' : R'
+            nl:  * |- r' @ l' undefined
+            -------------------------------- T-RcdMore
+            _: P; * |- (l' = t', r') : (l' : T', R')
+            where r := l' = t', r' and R := l' : T', R'
+        is
+            proof by case analysis on L:
+                case rule
+                    ---------------------- Lookup-here
+                    _: (l : T, R') @ l = T
+                    where l' := l and T' := T
+                is
+                    look: (l=t', r') @ l = t by rule lookup-here
+                    proof by dt', look
+                end case
+
+                case rule
+                    L': R' @ l = T
+                    ------------------------ Lookup-there
+                    _: (l' : T', R') @ l = T
+                is
+                    dt: P; * |- t : T and
+                    look': r' @ l = t by induction hypothesis on dr', L'
+                    look: r @ l = t by rule lookup-there on look'
+                    proof by dt, look
+                end case
+
+            end case analysis
+        end case
+
+    end case analysis
+end lemma 
+
+lemma progress-rcd:
+    forall ok: |- P
+    forall dr: P; * |- r : R
+    exists r value or r -> r'.
+    proof by induction on dr:
+        case rule
+            --------------------- T-RcdEmpty
+            _: P; * |- } : }
+            where r := } and R := }
+        is
+            _: } value by rule val-empty
+        end case
+
+        case rule
+            d: P; * |- t : T
+            d1: P; * |- r1 : R1
+            nl: * |- r1 @ l undefined
+            -------------------------------- T-RcdMore
+            _: P; * |- (l = t, r1) : (l : T, R1)
+            where r := (l=t, r1) and R := (l : T, R1)
+        is
+            o0: t value or t -> t' by theorem progress on ok, d
+            o1: r1 value or r1 -> r1' by induction hypothesis on ok, d1
+            proof by case analysis on o0:
+                case or v: t value is
+                    proof by case analysis on o1:
+                        case or v1: r1 value is
+                            _: r value by rule val-more on v, v1
+                        end case
+
+                        case or e1: r1 -> r1' is
+                            _: r -> (l=t,r1') by rule E-RcdThere on v, e1
+                        end case
+                    end case analysis
+                end case
+
+                case or e: t -> t' is
+                    _: r -> (l=t', r1) by rule E-RcdHere on e
+                end case
+
+            end case analysis
+        end case
+
+    end induction
+end lemma  
+and
+// Theorem 9.3.5
+theorem progress :
+    forall ok: |- P
+    forall d: P; * |- t : T
+    exists t value or t -> t' .
+    proof by induction on d:
+        case rule
+            d': P; * |- t : S
+            _: P |- S <: T
+            ---------------------- T-Sub
+            _: P; * |- t : T
+        is
+            proof by induction hypothesis on ok, d'
+        end case
+        case rule
+            d1: P; * |- t1 : struct l'
+            sl: P |- struct l' = { R
+            lR: R @ l = T
+            -------------------------- T-Proj
+            _: P; * |- (t1 @ l) : T
+            where t := t1 @ l
+        is
+            o1: t1 value or t1 -> t1' by induction hypothesis on ok, d1
+            _: t -> t' by case analysis on o1:
+                case or v1: t1 value is
+                    e1: t1 == struct l'' { r1 and
+                    rv: r1 value and
+                    f2: P |- struct l'' = { R'' and
+                    ra: R0 # R = R'' and
+                    dr: P; * |- r1 : R'' by lemma canonical-forms-Rcd on ok, d1, sl, v1
+                    use inversion of rule eq on e1 where t1 := struct l'' { r1
+                    lR': R'' @ l = T by lemma subtype-has-lookup on lR, ra
+                    dt'': P; * |- t' : T and
+                    look: r1 @ l = t' by lemma typed-Rlookup-implies-typed-lookup on dr, lR'
+                    proof by rule E-ProjRcd on v1, look
+                end case
+
+                case or e1: t1 -> t1' is
+                    proof by rule E-Proj on e1
+                end case
+
+            end case analysis
+        end case
+
+        case rule
+            df: P |- struct l = { R
+            dr: P; * |- r : R
+            -------------------------- T-Rcd
+            _: P; * |- struct l { r : struct l
+            where t := struct l { r and T := struct l
+        is
+            o1: r value or r -> r' by lemma progress-rcd on ok, dr
+            proof by case analysis on o1:
+                case or vr: r value is
+                    _: struct l { r value by rule val-rcd on vr
+                end case
+
+                case or er: r -> r' is
+                    _: struct l { r -> struct l { r' by rule E-Rcd on er
+                end case
+
+            end case analysis
+        end case
+
+        case rule
+            ------------------ T-Unit
+            _: P; * |- unit : Unit
+            where t := unit and T := Unit
+        is
+            v: unit value by rule val-unit
+        end case
+
+        case rule
+            v: t : T in *
+            ------------- T-Var
+            _: P; * |- t : T
+        is
+            proof by contradiction on v
+        end case
+
+        case rule
+            d1: P; *, x:T1 |- t1[x] : T2
+            ------------------------------------ T-Abs
+            _ : P; * |- fn x:T1 => t1[x] : T1 -> T2
+            where t := fn x:T1 => t1[x]
+            and T := T1 -> T2
+        is
+            v : fn x:T1 => t1[x] value by rule val-fn
+        end case
+
+        case rule
+            d1: P; * |- t1 : T2 -> T
+            d2: P; * |- t2 : T2
+            ---------------------- T-App
+            _: P; * |- t1 t2 : T
+            where t := t1 t2
+        is
+            ns1: t1 value or t1 -> t1' by induction hypothesis on ok, d1
+            ns2: t2 value or t2 -> t2' by induction hypothesis on ok, d2
+            _: t1 t2 -> t' by case analysis on ns1:
+                case or e1: t1 -> t1' is
+                    e: t1 t2 -> t1' t2 by rule E-App1 on e1
+                end case
+                case or v1: t1 value is
+                    proof by case analysis on ns2:
+                        case or e2: t2 -> t2' is
+                            e: t1 t2 -> t1 t2' by rule E-App2 on v1,e2
+                        end case
+                        case or v2: t2 value is
+                            c: t1 == fn x:T' => t11[x] by lemma canonical-forms-Arrow on d1,v1
+                            use inversion of rule eq on c where t1 := fn x:T' => t11[x]
+                            proof by rule E-AppAbs on v2
+                        end case
+                    end case analysis
+                end case
+            end case analysis
+        end case
+    end induction
+end theorem
+
+lemma subst-notin:
+    assumes Gamma
+    forall dr: Gamma, x : T |- r[x] @ l undefined
+    forall t assumes Gamma
+    exists Gamma |- r[t] @ l undefined .
+    proof by induction on dr:
+        case rule
+            ---------------------------- no-lookup-none
+            _: (Gamma, x : T) |- } @ l undefined
+            where r[x] := }
+        is
+            proof by rule no-lookup-none
+        end case
+
+        case rule
+            ne: l0 <> l
+            dr0: (Gamma, x : T) |- r0[x] @ l undefined
+            ------------------------------------ no-lookup-more
+            _: (Gamma, x : T) |- (l0 = t0[x], r0[x]) @ l undefined
+            where r[x] := (l0 = t0[x], r0[x])
+        is
+            dr': Gamma |- r0[t] @ l undefined by induction hypothesis on dr0, t
+            proof by rule no-lookup-more on ne, dr'
+        end case
+
+    end induction
+end lemma
+
+lemma substr :
+    assumes Gamma
+    forall dr1: P; Gamma, x : T2 |- r1[x] : R1
+    forall d2: P; Gamma |- t2 : T2
+    exists P; Gamma |- r1[t2] : R1 .
+    use induction on dr1
+    proof by case analysis on dr1:
+        case rule
+            --------------------- T-RcdEmpty
+            _: P; Gamma, x : T2 |- } : }
+            where r1[x] := } and R1 := }
+        is
+            proof by rule T-RcdEmpty
+        end case
+
+        case rule
+            d1: P; Gamma, x : T2 |- t1[x] : T
+            dr11: P; Gamma, x : T2 |- r11[x] : R
+            nl1:  Gamma, x : T2 |- r11[x] @ l undefined
+            -------------------------------- T-RcdMore
+            _: P; Gamma, x : T2 |- l = t1[x], r11[x] : (l : T, R)
+            where r1[x] := l = t1[x], r11[x] and R1 := l:T,R
+        is
+            d1' : P; Gamma |- t1[t2] : T by lemma subst on d1, d2
+            dr' : P; Gamma |- r11[t2] : R by induction hypothesis on dr11, d2
+            nl  : Gamma |- r11[t2] @ l undefined by lemma subst-notin on nl1, t2
+            proof by rule T-RcdMore on d1', dr', nl
+        end case
+
+    end case analysis
+end lemma
+and
+lemma subst :
+    assumes Gamma
+    forall d1: P; Gamma, x : T2 |- t1[x] : T1
+    forall d2: P; Gamma |- t2 : T2
+    exists P; Gamma |- t1[t2] : T1 .
+    proof by induction on d1:
+        // #(
+        case rule
+            d1': P; Gamma, x : T2 |- t1[x] : S
+            s: P |- S <: T1
+            ---------------------- T-Sub
+            _: P; Gamma, x : T2 |- t1[x] : T1
+        is
+            d': P; Gamma |- t1[t2] : S by induction hypothesis on d1', d2
+            proof by rule T-Sub on d', s
+        end case
+        case rule
+            sf: P |- struct l1 = { R1
+            dr1: P; Gamma, x : T2 |- r1[x] : R1
+            ------------------------------------- T-Rcd
+            _: P; Gamma, x : T2 |- struct l1 { r1[x] : struct l1
+            where t1[x] := struct l1 { r1[x] and T1 := struct l1
+        is
+            dr: P; Gamma |- r1[t2] : R1 by lemma substr on dr1, d2
+            proof by rule T-Rcd on sf, dr
+        end case
+
+        case rule
+            d11: P; Gamma, x : T2 |- t11[x] : struct l
+            sf: P |- struct l = { R1
+            look: R1 @ l1 = T1
+            -------------------------- T-Proj
+            _: P; Gamma, x : T2 |- t11[x] @ l1 : T1
+            where t1[x] := t11[x] @ l1
+        is
+            dt: P; Gamma |- t11[t2] : struct l by induction hypothesis on d11, d2
+            proof by rule T-Proj on dt, sf, look
+        end case
+
+
+        case rule
+            ------------------------------- T-Unit
+            _: P; Gamma, x : T2 |- unit : Unit
+            where t1[x] := unit and T1 := Unit
+        is
+            _: P; Gamma |- unit : Unit by rule T-Unit
+        end case
+
+        case rule
+            v: t1[x] : T1 in (Gamma, x:T2)
+            ------------------------------- T-Var
+            _: P; Gamma, x:T2 |- t1[x] : T1
+        is
+            proof by case analysis on v:
+                case rule
+                    ------------------------ var
+                    _: x:T2 in (Gamma, x:T2)
+                    where t1[x] := x and T1 := T2
+                is
+                    _: P; Gamma |- t2 : T2 by d2
+                end case
+                case rule
+                    --------------------------------- var
+                    _: x':T1 in (Gamma', x':T1, x:T2)
+                is
+                    v': x':T1 in (Gamma', x':T1) by rule var
+                    _: P; Gamma', x':T1 |- x':T1 by rule T-Var on v'
+                end case
+            end case analysis
+        end case
+
+        case rule
+            d11: P; Gamma, x : T2, x' : T2' |- t11[x][x'] : T1'
+            ------------------------------------------------------------ T-Abs
+            _  : P; Gamma, x : T2 |- (fn x':T2' => t11[x][x']) : T2' -> T1'
+            where t1[x] := fn x':T2' => t11[x][x']
+            and T1 := T2' -> T1'
+        is
+            d11r : P; Gamma, x' : T2', x : T2 |- t11[x][x'] : T1' 
+            by exchange on d11
+            d2' : P; Gamma, x' : T2' |- t2 : T2
+            by weakening on d2
+            d11': P; Gamma, x' : T2' |- t11[t2][x'] : T1' 
+            by induction hypothesis on d11r,d2'
+            _: P; Gamma |- (fn x':T2' => t11[t2][x']) : T2' -> T1' 
+            by rule T-Abs on d11'    
+        end case
+
+        case rule
+            d11: P; Gamma, x : T2 |- t11[x] : T12 -> T1
+            d12: P; Gamma, x : T2 |- t12[x] : T12
+            --------------------------------------- T-App
+            _  : P; Gamma, x : T2 |- t11[x] t12[x] : T1
+            where t1[x] := t11[x] t12[x]
+        is
+            d11': P; Gamma |- t11[t2] : T12 -> T1 by induction hypothesis on d11,d2
+            d12': P; Gamma |- t12[t2] : T12 by induction hypothesis on d12,d2
+            _   : P; Gamma |- t11[t2] t12[t2] : T1 by rule T-App on d11',d12'
+        end case
+    end induction
+end lemma
+
+
+lemma notin-preserved:
+    forall e: r -> r'
+    forall n: * |- r@l undefined
+    exists * |- r'@l undefined.
+    proof by induction on n:
+        case rule
+            ---------------------------- no-lookup-none
+            _: * |- } @ l undefined
+            where r := }
+        is
+            proof by contradiction on e
+        end case
+
+        case rule
+            ne: l0 <> l
+            nl0: * |- r0 @ l undefined
+            ------------------------------------ no-lookup-more
+            _: * |- (l0 = t, r0) @ l undefined
+            where r := l0 = t, r0
+        is
+            proof by case analysis on e:
+                case rule
+                    _: t -> t'
+                    -------------------------- E-RcdHere
+                    _: (l0 = t, r0) -> (l0 = t', r0)
+                    where r' := l0 = t', r0
+                is
+                    proof by rule no-lookup-more on ne, nl0
+                end case
+
+                case rule
+                    _: t value
+                    e0: r0 -> r0'
+                    --------------------------- E-RcdThere
+                    _: (l0 = t, r0) -> (l0 = t, r0')
+                    where r' := l0=t, r0'
+                is
+                    nl0': * |- r0' @ l undefined by induction hypothesis on e0, nl0
+                    proof by rule no-lookup-more on ne, nl0'
+                end case
+
+            end case analysis
+        end case
+
+    end induction
+end lemma
+
+lemma lookup-not-lookup-contradiction:
+    forall d1: r @ l = t
+    forall d2: * |- r @ l undefined
+    exists contradiction
+    proof by induction on d1:
+        case rule
+            ---------------------- lookup-here
+            _: (l = t, r') @ l = t
+            where r := l=t, r'
+        is
+            proof by case analysis on d2:
+                case rule
+                    ne: l <> l
+                    _: * |- r' @ l undefined
+                    ------------------------------------ no-lookup-more
+                    _: * |- (l = t, r') @ l undefined
+                is
+                    proof by theorem Nat.ne-anti-reflexive on ne
+                end case
+
+            end case analysis
+        end case
+
+        case rule
+            d1': r' @ l = t
+            ------------------------ lookup-there
+            _: (l' = t', r') @ l = t
+            where r := l'=t',r'
+        is
+            proof by case analysis on d2:
+                case rule
+                    _: l' <> l
+                    d2': * |- r' @ l undefined
+                    ------------------------------------ no-lookup-more
+                    _: * |- (l' = t', r') @ l undefined
+                is
+                    proof by induction hypothesis on d1',d2'
+                end case
+
+            end case analysis
+        end case
+
+    end induction
+end lemma
+
+lemma lookup-preserves-typing:
+    forall dr: P; * |- r : R
+    forall Look: R @ l = T
+    forall look: r @ l = t
+    exists P; * |- t : T.
+    proof by induction on dr:
+        case rule
+            --------------------- T-RcdEmpty
+            _: P; * |- } : }
+            where r := }
+            and  R := }
+        is
+            proof by contradiction on Look
+        end case
+
+        case rule
+            dt': P; * |- t' : T'
+            dr': P; * |- r' : R'
+            nl': * |- r' @ l' undefined
+            -------------------------------- T-RcdMore
+            _: P; * |- (l' = t', r') : (l' : T', R')
+            where r := l' = t', r'
+            and  R := l' : T', R'
+        is
+            proof by case analysis on Look:
+                case rule
+                    ---------------------- Lookup-here
+                    _: (l : T, R') @ l = T
+                    where l' := l and T' := T
+                is
+                    proof by case analysis on look:
+                        case rule
+                            ---------------------- lookup-here
+                            _: (l = t, r') @ l = t
+                            where t' := t
+                        is
+                            proof by dt'
+                        end case
+
+                        case rule
+                            look': r' @ l = t
+                            ------------------------ lookup-there
+                            _: (l = t', r') @ l = t
+                        is
+                            _: contradiction by lemma lookup-not-lookup-contradiction on look', nl'
+                        end case
+
+                    end case analysis
+                end case
+
+                case rule
+                    Look': R' @ l = T
+                    ------------------------ Lookup-there
+                    _: (l' : T', R') @ l = T
+                is
+                    proof by case analysis on look:
+                        case rule
+                            ---------------------- lookup-here
+                            _: (l = t, r') @ l = t
+                            where t':=t and l' := l
+                        is
+                            _: P; * |- t'' : T and
+                            look' : r' @ l = t'' by lemma typed-Rlookup-implies-typed-lookup on dr',Look'
+                            _: contradiction by lemma lookup-not-lookup-contradiction on look',nl'
+                        end case
+
+                        case rule
+                            look': r' @ l = t
+                            ------------------------ lookup-there
+                            _: (l' = t', r') @ l = t
+                        is
+                            proof by induction hypothesis on dr', Look', look'
+                        end case
+
+                    end case analysis
+                end case
+
+            end case analysis
+        end case
+
+
+    end induction
+end lemma
+
+// Theorem 9.3.9, first for records
+lemma preservationr :
+    forall ok: |- P
+    forall d: P; * |- r : R
+    forall e: r -> r'
+    exists P; * |- r' : R .
+    proof by induction on d:
+        case rule
+            --------------------- T-RcdEmpty
+            _: P; * |- } : }
+            where r := } and R := }
+        is
+            proof by contradiction on e
+        end case
+
+        case rule
+            dt: P; * |- t : T
+            d1: P; * |- r1 : R1
+            nl:    * |- r1 @ l undefined
+            -------------------------------- T-RcdMore
+            _: P; * |- (l = t, r1) : (l : T, R1)
+            where r := (l = t, r1) and R := (l : T, R1)
+        is
+            proof by case analysis on e:
+                case rule
+                    et: t -> t'
+                    -------------------------- E-RcdHere
+                    _: (l = t, r1) -> (l = t', r1)
+                    where r' := (l=t', r1)
+                is
+                    dt': P; * |- t' : T by theorem preservation on ok, dt, et
+                    proof by rule T-RcdMore on dt', d1, nl
+                end case
+
+                case rule
+                    tv: t value
+                    e1: r1 -> r1'
+                    --------------------------- E-RcdThere
+                    _: (l = t, r1) -> (l = t, r1')
+                    where r' := (l=t, r1')
+                is
+                    dr': P; * |- r1' : R1 by induction hypothesis on ok, d1, e1
+                    nl': * |- r1' @ l undefined by lemma notin-preserved on e1, nl
+                    proof by rule T-RcdMore on dt, dr', nl'
+                end case
+
+            end case analysis
+        end case
+
+    end induction
+end lemma
+and
+theorem preservation :
+    forall ok: |- P
+    forall d: P; * |- t : T
+    forall e: t -> t'
+    exists P; * |- t' : T .
+    proof by induction on d:
+        case rule
+            ds: P; * |- t : S
+            s: P |- S <: T
+            ---------------------- T-Sub
+            _: P; * |- t : T
+        is
+            ds': P; *|- t' : S by induction hypothesis on ok, ds, e
+            proof by rule T-Sub on ds', s
+        end case
+        case rule
+            sf: P |- struct l = { R
+            dr: P; * |- r : R
+            -------------------------- T-Rcd
+            _: P; * |- struct l { r : struct l
+            where t := struct l { r and T := struct l
+        is
+            proof by case analysis on e:
+                case rule
+                    er: r -> r'
+                    -------------------- E-Rcd
+                    _: (struct l { r) -> (struct l { r')
+                    where t' := struct l { r'
+                is
+                    dr' : P; * |- r' : R by lemma preservationr on ok, dr, er
+                    proof by rule T-Rcd on sf, dr'
+                end case
+
+            end case analysis
+        end case
+
+        case rule
+            d1: P; * |- t1 : struct l1
+            sf: P |- struct l1 = { R
+            Look: R @ l = T
+            -------------------------- T-Proj
+            _: P; * |- (t1 @ l) : T
+            where t := t1 @ l
+        is
+            proof by case analysis on e:
+                case rule
+                    e1: t1 -> t1'
+                    ---------------------- E-Proj
+                    _: (t1 @ l) -> (t1' @ l)
+                    where t' := t1' @ l
+                is
+                    d1': P; * |- t1' : struct l1 by induction hypothesis on ok, d1, e1
+                    proof by rule T-Proj on d1', sf, Look
+                end case
+
+                case rule
+                    _: (struct l' { r) value
+                    look: r @ l = t'
+                    ------------------ E-ProjRcd
+                    _: ((struct l' { r) @ l) -> t'
+                    where t1 := struct l' { r
+                is
+                    dr': P; * |- r : R' and
+                    sr': R'' # R = R' by lemma type-inversion-Rcd on ok, d1, sf
+                    Look' : R' @ l = T by lemma subtype-has-lookup on Look, sr'
+                    d': P; * |- t' : T by lemma lookup-preserves-typing on dr', Look', look
+                    proof by d'
+                end case
+
+            end case analysis
+        end case
+
+        case rule
+            ----------------------- T-Unit
+            _: P; * |- unit : Unit
+            where t := unit and T := Unit
+        is
+            proof by contradiction on e
+        end case
+
+        case rule
+            v: t : T in *
+            ----------------- T-Var
+            _: P; * |- t : T
+        is
+            proof by contradiction on v
+        end case
+
+        case rule
+            _: P; *, x : T1 |- t1[x] : T2
+            ---------------------------------------- T-Abs
+            _: P; * |- (fn x:T1 => t1[x]) : T1 -> T2
+            where t := fn x:T1 => t1[x] and T := T1 -> T2
+        is
+            proof by contradiction on e
+        end case
+
+        case rule
+            d1: P; * |- t1 : T2 -> T1
+            d2: P; * |- t2 : T2
+            --------------------------- T-App
+            _ : P; * |- t1 t2 : T1
+            where t := t1 t2 and T := T1
+        is
+            _: P; * |- t' : T by case analysis on e:
+                case rule
+                    e1: t1 -> t1'
+                    ------------------- E-App1
+                    _ : t1 t2 -> t1' t2
+                    where t' := t1' t2
+                is
+                    d1': P; * |- t1' : T2 -> T1 
+                    by induction hypothesis on ok, d1,e1
+                    _  : P; * |- t1' t2 : T1 by rule T-App on d1',d2
+                end case
+                case rule
+                    _ : t1 value
+                    e2: t2 -> t2'
+                    ------------------- E-App2
+                    _ : t1 t2 -> t1 t2'
+                    where t' := t1 t2'
+                is
+                    d2': P; * |- t2' : T2
+                    by induction hypothesis on ok, d2,e2
+                    _  : P; * |- t1 t2' : T1 by rule T-App on d1,d2'
+                end case
+                case rule
+                    _: t2 value
+                    ------------------------------------- E-AppAbs
+                    _: (fn x:T2' => t11[x]) t2 -> t11[t2]
+                    where t1 := fn x:T2' => t11[x]
+                    and t' := t11[t2]
+                is
+                    st: P |- T2 <: T2' and 
+                    d11: P; *, x: T2' |- t11[x] : T by lemma type-inversion-Arrow on d1
+                    d2': P; * |- t2 : T2' by rule T-Sub on d2, st
+                    proof by lemma subst on d11, d2'
+                end case
+            end case analysis
+        end case
+    end induction
+end theorem
+    
+// #)
