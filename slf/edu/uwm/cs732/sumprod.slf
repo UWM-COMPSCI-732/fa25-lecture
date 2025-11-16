@@ -288,6 +288,14 @@ lemma canonical-forms-Unit:
     end case analysis
     proof by case analysis on v:
         case rule
+            _: r0 value
+            ------------------ val-rec
+            _: ({ r0 }) value
+        is
+            proof by unproved
+        end case
+
+        case rule
             -------------------------- val-fn
             _: (fn x : T1 => t1[x]) value
             where t := fn x : T1 => t1[x]
@@ -321,6 +329,14 @@ lemma canonical-forms-Arrow:
         end case
     end case analysis
     proof by case analysis on v:
+        case rule
+            _: r0 value
+            ------------------ val-rec
+            _: ({ r0 }) value
+        is
+            proof by unproved
+        end case
+
         case rule
             -------------------------- val-fn
             _: (fn x : T0 => t2[x]) value
@@ -364,6 +380,23 @@ theorem progress :
     forall d: * |- t : T
     exists t value or t -> t' .
     proof by induction on d:
+        case rule
+            _: * |- r0 : R0
+            --------------------------------- T-Rec
+            _: * |- ({ r0 }) : ({ R0 })
+        is
+            proof by unproved
+        end case
+
+        case rule
+            _: * |- t0 : ({ R0 })
+            _: R0 @ l0 = T
+            ---------------------------- T-Sel
+            _: * |- (t0 . l0) : T
+        is
+            proof by unproved
+        end case
+
         case rule
             d1: * |- t1 : T1
             d2: *, x : T1 |- t2[x] : T
@@ -450,6 +483,23 @@ lemma subst :
     forall d2: Gamma |- t2 : T2
     exists Gamma |- t1[t2] : T1 .
     _ : Gamma |- t1[t2] : T1 by induction on d1:
+        case rule
+            _: (Gamma, x : T2) |- r0[x] : R0
+            --------------------------------- T-Rec
+            _: (Gamma, x : T2) |- ({ r0[x] }) : ({ R0 })
+        is
+            proof by unproved
+        end case
+
+        case rule
+            _: (Gamma, x : T2) |- t0[x] : ({ R0 })
+            _: R0 @ l0 = T1
+            ---------------------------- T-Sel
+            _: (Gamma, x : T2) |- (t0[x] . l0) : T1
+        is
+            proof by unproved
+        end case
+
         case rule
             d11: Gamma, x:T2 |- t11[x] : T11
             d12: Gamma, x:T2, x':T11 |- t12[x][x'] : T1
@@ -538,6 +588,23 @@ theorem preservation :
     forall e: t -> t'
     exists * |- t' : T .
     _ : * |- t' : T by induction on d:
+        case rule
+            _: * |- r0 : R0
+            --------------------------------- T-Rec
+            _: * |- ({ r0 }) : ({ R0 })
+        is
+            proof by unproved
+        end case
+
+        case rule
+            _: * |- t0 : ({ R0 })
+            _: R0 @ l0 = T
+            ---------------------------- T-Sel
+            _: * |- (t0 . l0) : T
+        is
+            proof by unproved
+        end case
+
         case rule
             d1: * |- t1 : T1
             d2: *, x:T1 |- t2[x] : T
