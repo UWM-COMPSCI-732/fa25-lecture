@@ -1,0 +1,472 @@
+package edu.uwm.cs732;
+
+terminals λ Unit Top value
+
+syntax
+  t ::= x
+     | λ x:T . t[x]
+     | t t
+     | λ X<:T . t[X]
+     | t T
+     
+S,T,U ::= X
+     | Top
+     | T → T
+     | ∀X<:T . T[X]
+     
+  Γ ::= •
+     | Γ, x:T
+     | Γ, X<:T
+
+judgment term-equal: t == t
+
+  ------- eq
+  t == t
+  
+judgment type-equal: Γ ⊢ T == T
+assumes Γ
+
+  ---------- type-eq
+  Γ ⊢ T == T
+
+judgment value: t value
+
+  ------------------ val-fn
+  λ x:T . t[x] value
+  
+  ------------------- val-tfn
+  λ X<:T . t[X] value
+
+judgment eval: t → t
+
+t1 → t1'
+--------------- E-App1
+t1 t2 → t1' t2
+
+t1 value
+t2 → t2'
+--------------- E-App2
+t1 t2 → t1 t2'
+
+t2 value
+------------------------------ E-AppAbs
+(λ x:T . t1[x]) t2 → t1[t2]
+
+t → t'
+------------- E-TApp
+t(T) → t'(T)
+
+------------------------- E-TAppTAbs
+(λ X<:U . t[X])(T) → t[T]
+
+  
+judgment subtype: Γ ⊢ T <: T
+assumes Γ
+
+  ------------------- S-Var
+  Γ, X <: T ⊢ X <: T
+  
+  ---------- S-Refl
+  Γ ⊢ T <: T
+  
+  Γ ⊢ S <: T
+  Γ ⊢ T <: U
+  ------------- S-Trans
+  Γ ⊢ S <: U
+  
+  Γ ⊢ T1 <: S1
+  Γ ⊢ S2 <: T2
+  --------------------------- S-Arrow
+  Γ ⊢ (S1 → S2) <: (T1 → T2)
+  
+  Γ ⊢ T1 <: S1
+  Γ, X <: T1 ⊢ S2[X] <: T2[X]
+  ---------------------------------------- S-All
+  Γ ⊢ (∀X<:S1 . S2[X]) <: (∀X<:T1 . T2[X])
+  
+  
+judgment typing: Γ ⊢ t : T
+assumes Γ
+
+  ------------ T-Var
+  Γ, x:T ⊢ x:T
+  
+  Γ, x:T ⊢ t[x] : T'
+  ----------------------- T-Abs
+  Γ ⊢ λ x:T.t[x] : T → T'
+
+  Γ ⊢ t1 : T → T'
+  Γ ⊢ t2 : T
+  ---------------- T-App
+  Γ ⊢ t1 t2 : T'
+  
+  Γ, X <: T ⊢ t[X] : T'[X]
+  --------------------------------- T-Tabs
+  Γ ⊢ λ X<:T . t[X] : ∀ X<:T . T'[X]
+  
+  Γ ⊢ t1 : ∀X<:T . T'[X]
+  Γ ⊢ T2 <: T
+  ------------------------ T-Tapp
+  Γ ⊢ t1 (T2) : T'[T2]
+  
+  Γ ⊢ t : S
+  Γ ⊢ S <: T
+  ----------- T-Sub
+  Γ ⊢ t : T
+  
+lemma subtype-inversion-Arrow:
+    forall d: • ⊢ S <: T1 → T2
+    exists • ⊢ S == S1 → S2 and • ⊢ T1 <: S1 and • ⊢ S2 <: T2
+    eqs: • ⊢ S == S by rule type-eq
+    proof by induction on d:
+        case rule
+            ---------------------------- S-Refl
+            _: • ⊢ (T1 → T2) <: (T1 → T2)
+            where S := T1 → T2
+        is
+            s1: • ⊢ T1 <: T1 by rule S-Refl
+            s2: • ⊢ T2 <: T2 by rule S-Refl
+            proof by eqs, s1, s2
+        end case
+
+        case rule
+            s1: • ⊢ S <: U
+            s2: • ⊢ U <: (T1 → T2)
+            --------------------- S-Trans
+            _: • ⊢ S <: (T1 → T2)
+        is
+            equ: • ⊢ U == U1 → U2 and 
+            su1: • ⊢ T1 <: U1 and
+            su2: • ⊢ U2 <: T2 by induction hypothesis on s2
+            use inversion of rule type-eq on equ where U := U1 → U2
+            eq:  • ⊢ S == S1 → S2 and
+            ss1: • ⊢ U1 <: S1 and
+            ss2: • ⊢ S2 <: U2 by induction hypothesis on s1
+            st1:  • ⊢ T1 <: S1 by rule S-Trans on su1, ss1
+            st2:  • ⊢ S2 <: T2 by rule S-Trans on ss2, su2
+            proof by eq, st1, st2
+        end case
+
+        case rule
+            s1: • ⊢ T1 <: S1
+            s2: • ⊢ S2 <: T2
+            --------------- S-Arrow
+            _: • ⊢ (S1 → S2) <: (T1 → T2)
+            where S := S1 → S2
+        is
+            proof by eqs, s1, s2
+        end case
+    end induction
+end lemma
+
+lemma canonical-forms-Arrow:
+    forall d: • ⊢ t : T
+    forall e: • ⊢ T == T1 → T2
+    forall v: t value 
+    exists t == λ x:S1 . t1[x] and • ⊢ T1 <: S1 and •, x:S1 ⊢ t1[x] : T2
+    use induction on d
+    do case analysis on d:
+        case rule
+            _: • ⊢ t0 : ∀X<:T3 . T3'[X]
+            _: • ⊢ T0 <: T3
+            ------------------------------- T-Tapp
+            _: • ⊢ t0(T0) : T3'[T0]
+            where t := t0(T0) and T := T3'[T0]
+        is
+            proof by contradiction on v
+        end case
+         
+        case rule
+            d': • ⊢ t : U
+            sb: • ⊢ U <: T
+            ---------------- T-Sub
+            _:  • ⊢ t : T    
+        is
+            use inversion of rule type-eq on e where T := T1 → T2
+            equ: • ⊢ U == U1 → U2 and
+            tu1: • ⊢ T1 <: U1 and
+            tu2: • ⊢ U2 <: T2 by lemma subtype-inversion-Arrow on sb
+            eq: t == λ x:S1 . t1[x] and
+            su1: • ⊢ U1 <: S1 and
+            du2: •, x:S1 ⊢ t1[x] : U2 by induction hypothesis on d', equ, v
+            st1: • ⊢ T1 <: S1 by rule S-Trans on tu1, su1
+            tu2': •, x:S1 ⊢ U2 <: T2 by weakening on tu2
+            dt2: •, x:S1 ⊢ t1[x] : T2 by rule T-Sub on du2, tu2'
+            proof by eq, st1, dt2
+        end case
+            
+    end case analysis
+    use inversion on e where T := T1 → T2
+    proof by case analysis on v:
+        case rule
+            --------------- val-fn
+            _: (λ x : S1 . t1[x]) value
+            where t := λ x:S1 . t1[x]
+        is
+            proof by case analysis on d:
+                case rule
+                    d1: •, x : S1 ⊢ t1[x] : T2
+                    ----------------------------------- T-Abs
+                    _: • ⊢ (λ x : S1 . t1[x]) : (S1 → T2)
+                    where T1 := S1
+                is
+                    eq: t == λ x:S1 . t1[x] by rule eq
+                    ss: • ⊢ S1 <: S1 by rule S-Refl
+                    proof by eq, ss, d1
+                end case
+
+            end case analysis
+        end case
+
+        case rule
+            --------------- val-tfn
+            _: (λ X <: U . t2[X]) value
+            where t := λ X <: U . t2[X]
+        is
+            proof by contradiction on d
+        end case
+
+    end case analysis
+end lemma
+
+lemma canonical-forms-AllH:
+    forall d: • ⊢ t : T
+    forall e: • ⊢ T == ∀ X <: U . T1[X]
+    forall v: t value
+    exists t == λ X <: U' . t1[X].
+    do case analysis on d:
+        case rule
+            d1: • ⊢  t : T'
+            s1: • ⊢ T' <: T
+            ------------------- T-Sub
+            _: • ⊢  t : T
+        is
+            proof by unproved
+        end case
+    end case analysis
+    use inversion of rule type-eq on e
+    where T := ∀X <: U . T1[X]
+    proof by case analysis on v:
+        case rule
+            --------------- val-fn
+            _: (λ x : T' . t'[x]) value
+            where t := λ x : T' . t'[x]
+        is
+            proof by contradiction on d
+        end case
+
+        case rule
+            --------------- val-tfn
+            _: (λ X<:U' . t1[X]) value
+            where t := λ X <: U' . t1[X]
+        is
+            proof by rule eq
+        end case
+
+    end case analysis
+end lemma
+
+lemma canonical-forms-All:
+    forall d: • ⊢ t : ∀ X <: U . T[X]
+    forall v: t value
+    exists t == λ X <: U' . t1[X].
+    e: • ⊢ ∀ X <: U . T[X] == ∀ X <: U . T[X] by rule type-eq
+    proof by lemma canonical-forms-AllH on d,e,v
+end lemma
+
+theorem progress :
+    forall d: • ⊢ t : T
+    exists t value or t → t'.
+    proof by induction on d:
+        case rule
+            d1: • ⊢ t : U
+            s1: • ⊢ U <: T
+            ----------------- T-Sub
+            _: • ⊢ t : T
+        is
+            proof by induction hypothesis on d1
+        end case
+
+        case rule
+            d1: •, x:T1 ⊢ t1[x] : T2
+            ------------------------------------ T-Abs
+            _ : • ⊢ λ x:T1 . t1[x] : T1 → T2
+            where t := λ x:T1 . t1[x]
+             and  T := T1 → T2
+        is
+            v : λ x:T1 . t1[x] value by rule val-fn
+        end case
+    
+        case rule
+            d1: • ⊢ t1 : T2 → T
+            d2: • ⊢ t2 : T2
+            ---------------------- T-App
+            _: • ⊢ t1 t2 : T
+            where t := t1 t2
+        is
+            ns1: t1 value or t1 → t1' by induction hypothesis on d1
+            ns2: t2 value or t2 → t2' by induction hypothesis on d2
+            _: t1 t2 → t' by case analysis on ns1:
+                case or e1: t1 → t1' is
+                    e: t1 t2 → t1' t2 by rule E-App1 on e1
+                end case
+                case or v1: t1 value is
+                    proof by case analysis on ns2:
+                        case or e2: t2 → t2' is
+                            e: t1 t2 → t1 t2' by rule E-App2 on v1,e2
+                        end case
+                        case or v2: t2 value is
+                            teq: • ⊢ T2 → T == T2 → T by rule type-eq
+                            c: t1 == λ x : T2' . t11[x] and 
+                            _: • ⊢ T2 <: T2' and 
+                            _: •, x:T2' ⊢ t11[x] : T by lemma canonical-forms-Arrow on d1, teq, v1
+                            use inversion of rule eq on c
+                            where t1 := λ x : T2' . t11[x]
+                            e: t1 t2 → t11[t2] by rule E-AppAbs on v2
+                        end case
+                    end case analysis
+                end case
+            end case analysis
+        end case
+    
+        case rule
+            d1: •, X <: U ⊢ t1[X] : T2[X]
+            --------------------------------------- T-Tabs
+            _ : • ⊢ λ X <: U . t1[X] : ∀ X<:U . T2[X]
+            where t := λ X<:U . t1[X]
+             and  T := ∀ X<:U . T2[X]
+        is
+            v : λ X<:U . t1[X] value by rule val-tfn
+        end case
+    
+        case rule
+            d1: • ⊢ t1 : ∀ X<:U . T1[X]
+            s1: • ⊢ T2 <: U
+            ---------------------------- T-Tapp
+            _: • ⊢ t1(T2) : T1[T2]
+            where t := t1(T2) 
+             and T := T1[T2]
+        is
+            ns1: t1 value or t1 → t1' by induction hypothesis on d1
+            _: t1(T2) → t' by case analysis on ns1:
+                case or e1: t1 → t1' is
+                    e: t1(T2) → t1'(T2) by rule E-TApp on e1
+                end case
+                case or v1: t1 value is
+                    c: t1 == λ X<:U' . t11[X] by lemma canonical-forms-All on d1, v1
+                    use inversion of rule eq on c
+                    where t1 := λ X<:U' . t11[X]
+                    e: t1(T2) → t11[T2] by rule E-TAppTAbs
+                end case
+            end case analysis
+        end case
+    end induction
+end theorem
+
+// theorem ...
+
+lemma subst :
+    assumes Γ
+    forall d1: Γ, x : T2 ⊢ t1[x] : T1
+    forall d2: Γ ⊢ t2 : T2
+    exists Γ ⊢ t1[t2] : T1 .
+    proof by induction on d1:
+        case rule
+            ------------------ T-Var
+            _: Γ', x' : T1, x : T2 ⊢ x' : T1
+        is
+            d1': Γ', x' : T1 ⊢ x' : T1 by rule T-Var
+            proof by d1'
+        end case
+
+        case rule
+            d11: Γ, x : T2 ⊢ t1[x] : U
+            s1: Γ, x : T2 ⊢ U <: T1
+            ----------------- T-Sub
+            _: Γ, x : T2 ⊢ t1[x] : T1
+        is
+            d11': Γ ⊢ t1[t2] : U by induction hypothesis on d11, d2
+            proof by unproved // TODO
+        end case
+
+        case rule
+            --------------- T-Var
+            _: Γ, x : T1 ⊢ x : T1
+            where T2 := T1
+            and t1[x] := x
+        is
+            proof by d2
+        end case
+
+        case rule
+            d0: Γ, x : T2, x' : T11 ⊢ t0[x][x'] : T12
+            -------------------------------------------------- T-Abs
+            _: Γ, x : T2 ⊢ (λ x' : T11 . t0[x][x']) : (T11 → T12)
+            where t1[x] := λ x' : T11 . t0[x][x']
+             and T1 := T11 → T12
+        is
+            d0': Γ, x' : T11, x : T2 ⊢ t0[x][x'] : T12 by exchange on d0
+            d2': Γ, x' : T11 ⊢ t2 : T2 by weakening on d2
+            d': Γ, x' : T11 ⊢ t0[t2][x'] : T12 by induction hypothesis on d0', d2'
+            proof by rule T-Abs on d'
+        end case
+
+        case rule
+            d11: Γ, x : T2 ⊢ t11[x] : (T → T1)
+            d12: Γ, x : T2 ⊢ t12[x] : T
+            ----------------------------------- T-App
+            _: Γ, x : T2 ⊢ (t11[x] t12[x]) : T1
+            where t1[x] := (t11[x] t12[x])
+        is
+            d11': Γ ⊢ t11[t2] : T → T1 by induction hypothesis on d11, d2
+            d12': Γ ⊢ t12[t2] : T by induction hypothesis on d12, d2
+            proof by rule T-App on d11', d12'
+        end case
+
+        case rule
+            d11: Γ, x : T2, X <: U  ⊢ t11[x][X] : T11[X]
+            ------------------------------------- T-Tabs
+            _: Γ, x : T2 ⊢ (λ X <: U . t11[x][X]) : (∀ X <: U . T11[X])
+            where t1[x] := λ X <: U . t11[x][X]
+             and T1 := ∀ X <: U . T11[X]
+        is
+            d11': Γ, X <: U, x : T2 ⊢ t11[x][X] : T11[X] by exchange on d11
+            d2': Γ, X <: U ⊢ t2 : T2 by weakening on d2
+            d': Γ, X <: U ⊢ t11[t2][X] : T11[X] by induction hypothesis on d11', d2'
+            proof by rule T-Tabs on d'
+        end case
+
+        case rule
+            d11: Γ, x : T2 ⊢ t11[x] : ∀ X <: U . T11[X]
+            s12: Γ, x:T2 ⊢ T12 <: U 
+            ----------------------------------- T-Tapp
+            _: Γ, x : T2 ⊢ t11[x](T12) : T11[T12]
+            where t1[x] := t11[x](T12)
+            and T1 := T11[T12]
+        is
+            d11' : Γ ⊢ t11[t2] : ∀ X <: U . T11[X] by induction hypothesis on d11,d2
+            s12': Γ ⊢ T12 <: U by unproved // TODO!
+            proof by rule T-Tapp on d11', s12'
+        end case
+
+    end induction
+end lemma
+
+lemma type-subst:
+    assumes Γ
+    forall d: Γ, X <: S ⊢ t[X] : T1[X]
+    forall T2 assumes Γ // too weak
+    exists Γ ⊢ t[T2] : T1[T2].
+    proof by unproved // impossible until we fix premise
+    // TODO: use SASyLF substitution
+end lemma
+
+lemma narrowing:
+    assumes Γ
+    forall sb1: Γ, X <: S ⊢ T[X] <: U[X]
+    forall sb2: Γ ⊢ S' <: S
+    exists Γ, X <: S' ⊢ T[X] <: U[X]
+    proof by unproved // use SASyLF substitution and other things
+end lemma
+
+
