@@ -114,6 +114,14 @@ assumes Γ
   ----------- T-Sub
   Γ ⊢ t : T
   
+lemma narrowing:
+    assumes Γ
+    forall sb1: Γ, X <: S ⊢ T[X] <: U[X]
+    forall sb2: Γ ⊢ S' <: S
+    exists Γ, X <: S' ⊢ T[X] <: U[X]
+    proof by unproved // use SASyLF substitution and other things
+end lemma
+
 lemma subtype-inversion-Arrow:
     forall d: • ⊢ S <: T1 → T2
     exists • ⊢ S == S1 → S2 and • ⊢ T1 <: S1 and • ⊢ S2 <: T2
@@ -363,7 +371,6 @@ theorem progress :
     end induction
 end theorem
 
-// theorem ...
 
 lemma subst :
     assumes Γ
@@ -461,12 +468,124 @@ lemma type-subst:
     // TODO: use SASyLF substitution
 end lemma
 
-lemma narrowing:
+lemma subtype-subst:
     assumes Γ
-    forall sb1: Γ, X <: S ⊢ T[X] <: U[X]
-    forall sb2: Γ ⊢ S' <: S
-    exists Γ, X <: S' ⊢ T[X] <: U[X]
-    proof by unproved // use SASyLF substitution and other things
+    forall d: Γ, x : T1 ⊢ t[x] : T'
+    forall s: Γ ⊢ T2 <: T1
+    exists Γ, x : T2 ⊢ t[x] : T'
+    proof by unproved
 end lemma
 
+lemma type-inversion-Tabs:
+    forall d: • ⊢ (λ x:T1 . t[x]) : T2 → T'
+    exists •, x:T2 ⊢ t[x] : T'
+    proof by unproved
+end lemma
+
+theorem preservation :
+    forall d: • ⊢ t : T
+    forall e: t → t'
+    exists • ⊢ t' : T .
+    _ : • ⊢ t' : T by induction on d:
+        case rule
+            d1: • ⊢ t : U
+            s: • ⊢ U <: T
+            ----------------- T-Sub
+            _: • ⊢ t : T
+        is
+            proof by unproved
+        end case
+
+        case rule
+            _: •, x : T1 ⊢ t1[x] : T2
+            ---------------------------------------- T-Abs
+            _: • ⊢ (λ x:T1 . t1[x]) : T1 → T2
+            where t := λ x:T1 . t1[x]
+            and T := T1 → T2
+        is
+            _: • ⊢ t' : T by contradiction on e
+        end case
+
+        case rule
+            d1: • ⊢ t1 : T2 → T
+            d2: • ⊢ t2 : T2
+            --------------------------- T-App
+            _ : • ⊢ t1 t2 : T
+            where t := t1 t2
+        is
+            _: • ⊢ t' : T by case analysis on e:
+                case rule
+                    e1: t1 → t1'
+                    ------------------- E-App1
+                    _ : t1 t2 → t1' t2
+                    where t' := t1' t2
+                is
+                    d1': • ⊢ t1' : T2 → T 
+                    by induction hypothesis on d1,e1
+                    _  : • ⊢ t1' t2 : T by rule T-App on d1',d2
+                end case
+                case rule
+                    _ : t1 value
+                    e2: t2 → t2'
+                    ------------------- E-App2
+                    _ : t1 t2 → t1 t2'
+                    where t' := t1 t2'
+                is
+                    d2': • ⊢ t2' : T2
+                    by induction hypothesis on d2,e2
+                    _  : • ⊢ t1 t2' : T by rule T-App on d1,d2'
+                end case
+                case rule
+                    _: t2 value
+                    ------------------------------------- E-AppAbs
+                    _: (λ x:T2' . t11[x]) t2 → t11[t2]
+                    where t1 := λ x:T2' . t11[x]
+                     and t' := t11[t2] 
+                is
+                    d11: •, x : T2 ⊢ t11[x] : T by lemma type-inversion-Tabs on d1
+                    proof by lemma subst on d11, d2
+                end case
+            end case analysis
+        end case
+
+        case rule
+            _: •, X<:U ⊢ t1[X] : T1[X]
+            -------------------------------------------- T-Tabs
+            _: • ⊢ (λ X<:U . t1[X]) : ∀ X<:U . T1[X]
+            where t := λ X<:U . t1[X]
+             and T := ∀ X<:U . T1[X]
+        is
+            proof by contradiction on e
+        end case
+
+        case rule
+            d1: • ⊢ t1 : ∀ X<:U . T1[X]
+            s1: • ⊢ T2 <: U
+            -------------------------------- T-Tapp
+            _ : • ⊢ t1(T2) : T1[T2]
+            where t := t1(T2)
+             and T := T1[T2]
+        is
+            _: • ⊢ t' : T by case analysis on e:
+                case rule
+                    e1: t1 → t1'
+                    --------------------- E-TApp
+                    _ : t1(T2) → t1'(T2)
+                    where t' := t1'(T2)
+                is
+                    d1': • ⊢ t1' : ∀ X<:U . T1[X]
+                    by induction hypothesis on d1,e1
+                    _  : • ⊢ t1'(T2) : T1[T2] by rule T-Tapp on d1', s1
+                end case
+                case rule
+                    --------------------------------- E-TAppTAbs
+                    _: (λ X<:U' . t11[X]) (T2) → t11[T2]
+                    where t1 := λ X<:U' . t11[X] and t' := t11[T2]
+                is
+                    proof by unproved
+                end case
+            end case analysis
+        end case
+    end induction
+end theorem
 
