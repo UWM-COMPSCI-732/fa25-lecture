@@ -119,7 +119,11 @@ lemma narrowing:
     forall sb1: Γ, X <: S ⊢ T[X] <: U[X]
     forall sb2: Γ ⊢ S' <: S
     exists Γ, X <: S' ⊢ T[X] <: U[X]
-    proof by unproved // use SASyLF substitution and other things
+    sb1': Γ, X' <: S', X <: S ⊢ T[X] <: U[X] by weakening on sb1
+    sv1: Γ, X' <: S' ⊢ X' <: S' by rule S-Var
+    sb2':Γ, X' <: S' ⊢ S' <: S by weakening on sb2
+    sv2: Γ, X' <: S' ⊢ X' <: S by rule S-Trans on sv1, sb2'
+    proof by substitution on sb1', sv2
 end lemma
 
 lemma subtype-inversion-Arrow:
@@ -165,6 +169,55 @@ lemma subtype-inversion-Arrow:
             proof by eqs, s1, s2
         end case
     end induction
+end lemma
+
+lemma subtype-inversion-All:
+    forall s: • ⊢ S <:  ∀ X<:T1 . T2[X]
+    exists • ⊢ S == ∀ X <: S1 . S2[X] and • ⊢ T1 <: S1 and •, X<:T1 ⊢ S2[X] <: T2[X]
+    eqs: • ⊢ S == S by rule type-eq
+    use induction on s
+    proof by case analysis on s:
+        case rule
+            ssu: • ⊢ S <: U
+            sut: • ⊢ U <: (∀ X <: T1 . T2[X])
+            ------------------- S-Trans
+            _: • ⊢ S <: (∀ X <: T1 . T2[X])
+        is
+            equ: • ⊢ U == ∀ X <: U1 . U2[X] and
+            su1: • ⊢ T1 <: U1 and
+            su2: •, X<:T1 ⊢ U2[X] <: T2[X] by induction hypothesis on sut
+            use inversion on equ where  U := ∀ X <: U1 . U2[X]
+            eqS: • ⊢ S == ∀ X <: S1 . S2[X] and
+            su3: • ⊢ U1 <: S1 and
+            su4: •, X<:U1 ⊢ S2[X] <: U2[X]
+            by induction hypothesis on ssu
+            st1: • ⊢ T1 <: S1 by rule S-Trans on su1, su3
+            su4':•, X<:T1 ⊢ S2[X] <: U2[X] by lemma narrowing on su4, su1
+            st2: •, X<:T1 ⊢ S2[X] <: T2[X] by rule S-Trans on su4', su2 
+            proof by eqS, st1, st2
+        end case
+
+        case rule
+            s1: • ⊢ T1 <: S1
+            s2: (•, X <: T1) ⊢ S2[X] <: T2[X]
+            ---------------------------------------------- S-All
+            _: • ⊢ (∀ X <: S1 . S2[X]) <: (∀ X <: T1 . T2[X])
+            where S := ∀ X <: S1 . S2[X]
+        is
+            proof by eqs, s1, s2
+        end case
+
+        case rule
+            ---------------- S-Refl
+            _: • ⊢ (∀ X <: T1 . T2[X]) <: (∀ X <: T1 . T2[X])
+            where S := ∀ X <: T1 . T2[X]
+        is
+            s1: • ⊢ T1 <: T1 by rule S-Refl
+            s2: •, X<:T1 ⊢ T2[X] <: T2[X] by rule S-Refl
+            proof by eqs, s1, s2
+        end case
+
+    end case analysis
 end lemma
 
 lemma canonical-forms-Arrow:
@@ -377,95 +430,15 @@ lemma subst :
     forall d1: Γ, x : T2 ⊢ t1[x] : T1
     forall d2: Γ ⊢ t2 : T2
     exists Γ ⊢ t1[t2] : T1 .
-    proof by induction on d1:
-        case rule
-            ------------------ T-Var
-            _: Γ', x' : T1, x : T2 ⊢ x' : T1
-        is
-            d1': Γ', x' : T1 ⊢ x' : T1 by rule T-Var
-            proof by d1'
-        end case
-
-        case rule
-            d11: Γ, x : T2 ⊢ t1[x] : U
-            s1: Γ, x : T2 ⊢ U <: T1
-            ----------------- T-Sub
-            _: Γ, x : T2 ⊢ t1[x] : T1
-        is
-            d11': Γ ⊢ t1[t2] : U by induction hypothesis on d11, d2
-            proof by unproved // TODO
-        end case
-
-        case rule
-            --------------- T-Var
-            _: Γ, x : T1 ⊢ x : T1
-            where T2 := T1
-            and t1[x] := x
-        is
-            proof by d2
-        end case
-
-        case rule
-            d0: Γ, x : T2, x' : T11 ⊢ t0[x][x'] : T12
-            -------------------------------------------------- T-Abs
-            _: Γ, x : T2 ⊢ (λ x' : T11 . t0[x][x']) : (T11 → T12)
-            where t1[x] := λ x' : T11 . t0[x][x']
-             and T1 := T11 → T12
-        is
-            d0': Γ, x' : T11, x : T2 ⊢ t0[x][x'] : T12 by exchange on d0
-            d2': Γ, x' : T11 ⊢ t2 : T2 by weakening on d2
-            d': Γ, x' : T11 ⊢ t0[t2][x'] : T12 by induction hypothesis on d0', d2'
-            proof by rule T-Abs on d'
-        end case
-
-        case rule
-            d11: Γ, x : T2 ⊢ t11[x] : (T → T1)
-            d12: Γ, x : T2 ⊢ t12[x] : T
-            ----------------------------------- T-App
-            _: Γ, x : T2 ⊢ (t11[x] t12[x]) : T1
-            where t1[x] := (t11[x] t12[x])
-        is
-            d11': Γ ⊢ t11[t2] : T → T1 by induction hypothesis on d11, d2
-            d12': Γ ⊢ t12[t2] : T by induction hypothesis on d12, d2
-            proof by rule T-App on d11', d12'
-        end case
-
-        case rule
-            d11: Γ, x : T2, X <: U  ⊢ t11[x][X] : T11[X]
-            ------------------------------------- T-Tabs
-            _: Γ, x : T2 ⊢ (λ X <: U . t11[x][X]) : (∀ X <: U . T11[X])
-            where t1[x] := λ X <: U . t11[x][X]
-             and T1 := ∀ X <: U . T11[X]
-        is
-            d11': Γ, X <: U, x : T2 ⊢ t11[x][X] : T11[X] by exchange on d11
-            d2': Γ, X <: U ⊢ t2 : T2 by weakening on d2
-            d': Γ, X <: U ⊢ t11[t2][X] : T11[X] by induction hypothesis on d11', d2'
-            proof by rule T-Tabs on d'
-        end case
-
-        case rule
-            d11: Γ, x : T2 ⊢ t11[x] : ∀ X <: U . T11[X]
-            s12: Γ, x:T2 ⊢ T12 <: U 
-            ----------------------------------- T-Tapp
-            _: Γ, x : T2 ⊢ t11[x](T12) : T11[T12]
-            where t1[x] := t11[x](T12)
-            and T1 := T11[T12]
-        is
-            d11' : Γ ⊢ t11[t2] : ∀ X <: U . T11[X] by induction hypothesis on d11,d2
-            s12': Γ ⊢ T12 <: U by unproved // TODO!
-            proof by rule T-Tapp on d11', s12'
-        end case
-
-    end induction
+    proof by substitution on d1, d2
 end lemma
 
 lemma type-subst:
     assumes Γ
     forall d: Γ, X <: S ⊢ t[X] : T1[X]
-    forall T2 assumes Γ // too weak
+    forall s: Γ ⊢ T2 <: S
     exists Γ ⊢ t[T2] : T1[T2].
-    proof by unproved // impossible until we fix premise
-    // TODO: use SASyLF substitution
+    proof by substitution on d, s
 end lemma
 
 lemma subtype-subst:
@@ -473,13 +446,44 @@ lemma subtype-subst:
     forall d: Γ, x : T1 ⊢ t[x] : T'
     forall s: Γ ⊢ T2 <: T1
     exists Γ, x : T2 ⊢ t[x] : T'
-    proof by unproved
+    d': Γ, x' : T2, x : T1 ⊢ t[x] : T' by weakening on d
+    d1: Γ, x' : T2 ⊢ x' : T2 by rule T-Var
+    s': Γ, x' : T2 ⊢ T2 <: T1 by weakening on s
+    d2: Γ, x' : T2 ⊢ x' : T1 by rule T-Sub on d1, s'
+    proof by substitution on d', d2
 end lemma
 
 lemma type-inversion-Tabs:
     forall d: • ⊢ (λ x:T1 . t[x]) : T2 → T'
     exists •, x:T2 ⊢ t[x] : T'
-    proof by unproved
+    use induction on d
+    proof by case analysis on d:
+        case rule
+            d1: •, x : T1 ⊢ t[x] : T'
+            ----------------------------- T-Abs
+            _: • ⊢ (λ x : T1 . t[x]) : (T1 → T')
+            where T2 := T1
+        is
+            proof by d1
+        end case
+
+        case rule
+            d1: • ⊢ (λ x : T1 . t[x]) : S
+            s1: • ⊢ S <: (T2 → T')
+            ----------------- T-Sub
+            _: • ⊢ (λ x : T1 . t[x]) : (T2 → T')
+        is
+            eqS : • ⊢ S == S1 → S2 and
+            s11 : • ⊢ T2 <: S1 and
+            s12 : • ⊢ S2 <: T' by lemma subtype-inversion-Arrow on s1
+            use inversion on eqS where S := S1 → S2
+            d1': •, x:S1 ⊢ t[x] : S2 by induction hypothesis on d1
+            d2': •, x:T2 ⊢ t[x] : S2 by lemma subtype-subst on d1', s11
+            s12': •, x:T2 ⊢ S2 <: T' by weakening on s12
+            proof by rule T-Sub on d2', s12'
+        end case
+
+    end case analysis
 end lemma
 
 theorem preservation :
@@ -493,7 +497,8 @@ theorem preservation :
             ----------------- T-Sub
             _: • ⊢ t : T
         is
-            proof by unproved
+            d1': • ⊢ t' : U by induction hypothesis on d1, e
+            proof by rule T-Sub on d1', s
         end case
 
         case rule
